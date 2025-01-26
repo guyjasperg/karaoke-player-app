@@ -231,7 +231,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
 		id="video-container"
-		class="h-full w-full relative"
+		class="h-full w-full relative bg-slate-700"
 		on:mouseenter={() => (showControls = true)}
 		on:mouseleave={() => (showControls = false)}
 		on:mousemove={resetHideTimeout}
@@ -459,7 +459,11 @@
 		{/if}
 	</div>
 {:else}
-	<p class="text-white">No video selected. Please choose a video file.</p>
+	<!-- <p class="text-[40px] text-slate-400">No video selected.</p> -->
+	<div class="h-full w-full relative bg-slate-700 justify-center items-center flex">
+		<i class="fas fa-video-slash text-9xl"></i>
+		<!-- Font Awesome "no video" icon -->
+	</div>
 {/if}
 
 <!-- Styles -->

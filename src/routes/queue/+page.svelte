@@ -1,7 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import Header from '../../components/Header.svelte';
+	import Footer from '../../components/Footer.svelte';
 	import Popup from '../../components/Popup.svelte';
+	import SessionSongsPopup from '../../components/SessionSongsPopup.svelte';
 	let searchQuery = ''; // Holds the user's search query
 	let searchResults = []; // Holds the search results from the API
 	let isLoading = false; // Tracks whether the search is in progress
@@ -11,6 +14,8 @@
 	let rowsPerPage = 20; // Default rows per page
 	let selectedIndex = -1; // Tracks the currently selected row
 	let resultsContainer; // Reference to the results container
+	let songs = []; // List of all songs in the queue
+	let showSessionSongsPopup = false; // Controls popup visibility
 
 	//popup
 	let popupMessage = '';
@@ -53,12 +58,40 @@
 			selectedIndex = -1; // Reset selected index when new results are loaded
 		} catch (error) {
 			console.error('Failed to search for songs:', error);
-			alert('Failed to search for songs. Please try again.');
+			showPopupMessage('Failed to search for songs. Please try again.', 'error');
 		} finally {
 			isLoading = false;
 		}
 	}
 
+	// Function to get queued songs for sessionId using a third-party API
+
+	//3rd party API
+	// Endpoint to get all songs in the queue for a given sessionId
+	// app.get('/api/songqueue/session/:sessionId', (req, res) => {
+	// const { sessionId } = req.params;
+	async function getQueuedSongs() {
+		console.log('getQueuedSongs');
+		try {
+			// Replace with your third-party API call
+			const response = await fetch(
+				`/api/proxy/api/songqueue/session/${encodeURIComponent(sessionId)}`
+			);
+
+			songs = await response.json();
+
+			if (songs && songs.length > 0) {
+				showSessionSongsPopup = true;
+			} else {
+				showPopupMessage('No songs found in the queue.', 'info');
+			}
+		} catch (error) {
+			console.error('Failed to get queued songs:', error);
+			showPopupMessage('Failed to get queued songs.', 'error');
+		} finally {
+			// showSessionSongsPopup = true;
+		}
+	}
 	// Function to queue a song
 
 	//[3rd-party API]
@@ -130,6 +163,12 @@
 		}
 	}
 
+	// Handle click on sessionId
+	const handleSessionIdClick = () => {
+		getQueuedSongs();
+		//showSessionSongsPopup = true;
+	};
+
 	// Initialize session ID and event listener when the page loads
 	onMount(() => {
 		if (browser) {
@@ -172,63 +211,77 @@
 		popupType = type;
 		showPopup = true;
 	};
+
+	const handleSessionIDClick = (event) => {
+		event.preventDefault(); // Prevent the default navigation behavior
+		// console.log('Link clicked!');
+		// Call your custom function here
+		getQueuedSongs();
+	};
 </script>
 
-<main>
-	<h1>Queue Songs</h1>
+<main class="h-screen flex flex-col">
+	<!-- Header (10% height) -->
+	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
+		<Header title="Queue Songs" />
+	</div>
 
 	<!-- Popup Component -->
 	<Popup message={popupMessage} type={popupType} bind:visible={showPopup} />
 
-	<!-- Display session ID with Tailwind styles -->
-	{#if sessionId}
-		<p class="text-sm text-gray-400 mb-4">
-			<span class="font-semibold">Session ID:</span>
-			<span class="font-mono text-gray-500">{sessionId}</span>
-		</p>
-	{/if}
+	<!-- Session Songs Popup -->
+	<SessionSongsPopup {sessionId} {songs} bind:visible={showSessionSongsPopup} />
 
-	<p class="text-lg m-4">Search for songs to add to the karaoke queue.</p>
+	<!-- Main Content (80% height, scrollable) -->
+	<div class="flex-1 overflow-y-auto p-4 items-center justify-center">
+		<!-- Display session ID with Tailwind styles -->
+		{#if sessionId}
+			<p class="text-md text-gray-400 mb-4 text-center">
+				SessionID: <a href="/" class="text-blue-600 font-bold" on:click={handleSessionIDClick}>
+					{sessionId}
+				</a>
+			</p>
+		{/if}
 
-	<!-- Search input and button -->
-	<div class="search-container">
-		<input type="text" bind:value={searchQuery} placeholder="Search for songs..." />
-		<button on:click={searchSongs} disabled={isLoading}>
-			{#if isLoading}
-				Searching...
-			{:else}
-				Search
-			{/if}
-		</button>
+		<p class="text-lg m-4 text-center">Search for songs to add to the karaoke queue.</p>
+
+		<!-- Search input and button -->
+		<div class="flex justify-center gap-2 mb-5">
+			<input type="text" bind:value={searchQuery} placeholder="Search for songs..." />
+			<button on:click={searchSongs} disabled={isLoading}>
+				{#if isLoading}
+					Searching...
+				{:else}
+					Search
+				{/if}
+			</button>
+		</div>
+
+		<!-- Search results -->
+		{#if searchResults.length > 0}
+			<h2 class="text-center mb-2 text-slate-600">Search Result [{searchResults.length}]</h2>
+			<div class="results-container" bind:this={resultsContainer}>
+				<ul>
+					{#each searchResults as song, index}
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+						<li class:selected={index === selectedIndex} on:click={() => (selectedIndex = index)}>
+							<span>{song.Artist} - {song.Title}</span>
+							<button on:click={() => queueSong(song)}>Queue</button>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
 	</div>
 
-	<!-- Search results -->
-	{#if searchResults.length > 0}
-		<div class="results-container" bind:this={resultsContainer}>
-			<h2>Search Results</h2>
-			<ul>
-				{#each searchResults as song, index}
-					{console.log(song)}
-					<li class:selected={index === selectedIndex} on:click={() => (selectedIndex = index)}>
-						<span>{song.Artist} - {song.Title}</span>
-						<button on:click={() => queueSong(song)}>Queue</button>
-					</li>
-				{/each}
-			</ul>
-		</div>
-	{/if}
+	<!-- Footer (10% height) -->
+	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
+		<Footer />
+	</div>
 </main>
 
 <style>
-	main {
-		text-align: center;
-		padding: 2rem;
-	}
-
-	h1 {
-		font-size: 2rem;
-	}
-
 	.search-container {
 		display: flex;
 		justify-content: center;

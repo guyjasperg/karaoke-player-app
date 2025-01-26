@@ -1,10 +1,12 @@
 <script>
 	import { onMount } from 'svelte';
 	import VideoPlayer from '../../components/VideoPlayer.svelte'; // Import VideoPlayer
+	import Footer from '../../components/Footer.svelte';
 	import QRCode from '../../components/QRCode.svelte'; // Import the reusable QRCode component
 	import qrcode from 'qrcode'; // Import the QR code library
 	import { configStore } from '../../lib/stores/configStore.js'; // Import the store
 	import { browser } from '$app/environment';
+	import Header from '../../components/Header.svelte';
 
 	// Reactive variables
 	let queue = []; // Store the list of videos from the API
@@ -24,23 +26,33 @@
 	});
 
 	// Default file path for testing (pointing to the local Node.js server)
-	const defaultFilePath = 'http://192.168.108.4:3000/videos/Blue Sky - Hale.mp4';
+	const defaultFilePath = '';
 
 	// Fetch session ID from cookie or generate a new one
 	function getSessionId() {
 		const cookie = document.cookie.split(';').find((c) => c.trim().startsWith('sessionId='));
 		if (cookie) {
+			console.log(`sessionId from cookie: ${cookie.split('=')[1]}`);
 			return cookie.split('=')[1];
 		} else {
 			const newSessionId = generateSessionId();
+			console.log(`sessionId [NEW]]: ${newSessionId}`);
 			document.cookie = `sessionId=${newSessionId}; path=/; max-age=86400`; // Expires in 1 day
 			return newSessionId;
 		}
 	}
 
 	// Generate a unique session ID
-	function generateSessionId() {
-		return 'session-' + Math.random().toString(36).substr(2, 9); // Random unique ID
+	function generateSessionId(length = 4) {
+		const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; // All uppercase letters
+		let sessionId = '';
+
+		for (let i = 0; i < length; i++) {
+			const randomIndex = Math.floor(Math.random() * letters.length);
+			sessionId += letters[randomIndex]; // Append a random letter
+		}
+
+		return sessionId; // Prefix with "SESSION-"
 	}
 
 	// Fetch video queue from API based on session ID
@@ -52,7 +64,7 @@
 
 			// If the queue is empty, use the default file path
 			if (queue.length === 0) {
-				videoUrl = defaultFilePath;
+				// videoUrl = defaultFilePath;
 			} else {
 				videoUrl = queue[currentVideoIndex].filepath; // Use the first video in the queue
 			}
@@ -60,12 +72,12 @@
 			console.error('Failed to fetch queue:');
 			// If the API fails, use the default file path
 			queue = [];
-			queue.push({
-				Artist: 'Pink Floyd',
-				Title: 'Another Brick In The Wall',
-				filepath: defaultFilePath
-			});
-			videoUrl = defaultFilePath;
+			// queue.push({
+			// 	Artist: 'Pink Floyd',
+			// 	Title: 'Another Brick In The Wall',
+			// 	filepath: defaultFilePath
+			// });
+			// videoUrl = defaultFilePath;
 		} finally {
 			isLoading = false; // Set loading to false after fetching
 		}
@@ -125,20 +137,19 @@
 <main class="h-screen flex flex-col">
 	<!-- Header (10% height) -->
 	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
-		<p class="text-2xl font-bold text-blue-800">Header (10%)</p>
+		<!-- <p class="text-2xl font-bold text-blue-800">Header (10%)</p> -->
+		<Header />
 	</div>
 
 	<!-- Main Content (80% height) -->
 	<div class="h-[80%] flex">
 		<!-- Left Column (80% width) -->
-		<div class="w-4/5 bg-green-200 flex items-center justify-center relative group">
+		<div class="w-4/5 bg-slate-700 flex items-center justify-center relative group">
 			{#if isLoading}
 				<p class="text-2xl font-semibold text-green-800">Loading queue...</p>
 			{:else if queue.length === 0}
-				<p class="text-2xl font-semibold text-green-800">
-					No videos in the queue. Using default video.
-				</p>
-				<VideoPlayer {videoUrl} artist="Pink Floyd" title="Another Brick In The Wall" />
+				<p class="text-4xl font-semibold text-green-800">No videos in the queue.</p>
+				<!-- <VideoPlayer {videoUrl} artist="Pink Floyd" title="Another Brick In The Wall" /> -->
 			{:else}
 				<VideoPlayer
 					videoUrl={queue[currentVideoIndex].filepath}
@@ -149,9 +160,9 @@
 		</div>
 
 		<!-- Right Column (20% width) -->
-		<div class="w-1/5 bg-red-200 flex flex-col p-4 overflow-hidden">
+		<div class="w-1/5 bg-slate-700 flex flex-col p-2 overflow-hidden">
 			<!-- Top Section -->
-			<div class="h-20 p-2 bg-white flex items-center justify-center">
+			<div class="h-20 bg-white flex items-center justify-center">
 				<button
 					class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300"
 					on:click={generateQrCode}
@@ -183,7 +194,7 @@
 
 	<!-- Footer (10% height) -->
 	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
-		<p class="text-2xl font-bold text-blue-800">Footer (10%)</p>
+		<Footer />
 	</div>
 
 	<!-- QR code overlay -->
@@ -192,6 +203,7 @@
 			<div class="overlay-content">
 				<h2>Scan to Queue Songs</h2>
 				<QRCode {qrCodeUrl} />
+				<p class=" text-sm">{sessionId}</p>
 				<!-- Clickable link below the QR code -->
 				<p class="link-text">
 					Or <a href={`/queue?${queryParams}`} class="link">click here</a> to queue songs.

@@ -4,6 +4,8 @@
 	import { goto } from '$app/navigation'; // Import the navigate function
 	import { browser } from '$app/environment';
 	import { configStore } from '../../lib/stores/configStore.js';
+	import Header from '../../components/Header.svelte';
+	import Footer from '../../components/Footer.svelte';
 
 	// Default settings (cannot be deleted)
 	const defaultSettings = {
@@ -97,88 +99,82 @@
 	}
 </script>
 
-<main>
+<main class="h-screen flex flex-col">
+	<!-- Header (10% height) -->
+	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
+		<Header title="Backend Configuration" subtitle="Add/update settings for the app." />
+	</div>
+
+	<!-- Main Content (80% height, scrollable) -->
+	<div class="flex-1 overflow-y-auto p-4">
+		<!-- Configuration form -->
+		<div class="config-form">
+			<!-- Add new setting -->
+			<div class="form-group">
+				<label for="newSettingName">New Setting Name</label>
+				<input
+					type="text"
+					id="newSettingName"
+					bind:value={newSettingName}
+					placeholder="Enter setting name"
+				/>
+			</div>
+
+			<div class="form-group">
+				<label for="newSettingValue">New Setting Value</label>
+				<input
+					type="text"
+					id="newSettingValue"
+					bind:value={newSettingValue}
+					placeholder="Enter setting value"
+				/>
+			</div>
+
+			<button on:click={addSetting}>Add Setting</button>
+
+			<!-- Display all settings -->
+			<div class="settings-list">
+				<h2>Current Settings</h2>
+				{#each Object.entries({ ...defaultSettings, ...customSettings }) as [key, value]}
+					<div class="setting-item">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label>{key}</label>
+						<div class="input-container">
+							<input type="text" bind:value on:input={(e) => updateSetting(key, e.target.value)} />
+							{#if !defaultSettings[key]}
+								<button on:click={() => deleteSetting(key)} class="delete-button">
+									<i class="fas fa-trash"></i>
+									<!-- Font Awesome trash icon -->
+								</button>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			<!-- Save configuration -->
+			<button on:click={saveConfig}>Save Configuration</button>
+
+			{#if isSaved}
+				<p class="success-message">Configuration saved successfully!</p>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Footer (10% height) -->
+	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
+		<Footer />
+	</div>
+
 	<!-- Home button -->
-	<div class="home-button-container">
+	<!-- <div class="home-button-container">
 		<button on:click={goHome} class="home-button">
 			<i class="fas fa-home"></i>
-			<!-- Font Awesome home icon -->
 		</button>
-	</div>
-
-	<h1>Backend Configuration</h1>
-	<p>Set and manage your backend configuration settings.</p>
-
-	<!-- Configuration form -->
-	<div class="config-form">
-		<!-- Add new setting -->
-		<div class="form-group">
-			<label for="newSettingName">New Setting Name</label>
-			<input
-				type="text"
-				id="newSettingName"
-				bind:value={newSettingName}
-				placeholder="Enter setting name"
-			/>
-		</div>
-
-		<div class="form-group">
-			<label for="newSettingValue">New Setting Value</label>
-			<input
-				type="text"
-				id="newSettingValue"
-				bind:value={newSettingValue}
-				placeholder="Enter setting value"
-			/>
-		</div>
-
-		<button on:click={addSetting}>Add Setting</button>
-
-		<!-- Display all settings -->
-		<div class="settings-list">
-			<h2>Current Settings</h2>
-			{#each Object.entries({ ...defaultSettings, ...customSettings }) as [key, value]}
-				<div class="setting-item">
-					<label>{key}</label>
-					<div class="input-container">
-						<input type="text" bind:value on:input={(e) => updateSetting(key, e.target.value)} />
-						{#if !defaultSettings[key]}
-							<button on:click={() => deleteSetting(key)} class="delete-button">
-								<i class="fas fa-trash"></i>
-								<!-- Font Awesome trash icon -->
-							</button>
-						{/if}
-					</div>
-				</div>
-			{/each}
-		</div>
-
-		<!-- Save configuration -->
-		<button on:click={saveConfig}>Save Configuration</button>
-
-		{#if isSaved}
-			<p class="success-message">Configuration saved successfully!</p>
-		{/if}
-	</div>
+	</div> -->
 </main>
 
 <style>
-	main {
-		text-align: center;
-		padding: 2rem;
-		position: relative; /* For positioning the home button */
-	}
-
-	h1 {
-		font-size: 2rem;
-		margin-bottom: 1rem;
-	}
-
-	p {
-		font-size: 1.2rem;
-		margin-bottom: 2rem;
-	}
-
 	.config-form {
 		max-width: 600px;
 		margin: 0 auto;
