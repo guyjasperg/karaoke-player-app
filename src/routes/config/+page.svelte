@@ -1,7 +1,7 @@
 <!-- src/routes/config/+page.svelte -->
 <script>
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation'; // Import the navigate function
+	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { configStore } from '../../lib/stores/configStore.js';
 	import Header from '../../components/Header.svelte';
@@ -9,130 +9,110 @@
 
 	// Default settings (cannot be deleted)
 	const defaultSettings = {
-		apiBaseUrl: 'https://api.example.com', // Default API base URL
-		websocketUrl: 'wss://ws.example.com' // Default WebSocket URL
+		apiBaseUrl: 'https://api.example.com',
+		websocketUrl: 'wss://ws.example.com',
+		fileServer: 'http://localhost:3001/videos/'
 	};
 
 	// Reactive variables
-	let customSettings = {}; // Stores custom settings added by the user
-	let newSettingName = ''; // Holds the name of the new setting
-	let newSettingValue = ''; // Holds the value of the new setting
-	let isSaved = false; // Tracks whether the configuration is saved
+	let customSettings = {};
+	let newSettingName = '';
+	let newSettingValue = '';
+	let isSaved = false;
 
-	// Load saved configuration when the page loads
 	onMount(() => {
 		if (browser) {
 			const savedConfig = JSON.parse(localStorage.getItem('backendConfig') || '{}');
-			customSettings = savedConfig.customSettings || {};
+			// customSettings = savedConfig.customSettings || {};
 		}
 	});
 
-	// Function to save the configuration
 	function saveConfig() {
 		if (browser) {
 			const config = {
-				...defaultSettings, // Include default settings
-				customSettings // Include custom settings
+				...defaultSettings
+				// customSettings
 			};
 			localStorage.setItem('backendConfig', JSON.stringify(config));
-			configStore.set(config); // Update the store
+			configStore.set(config);
 			isSaved = true;
-
-			// Reset the saved message after 3 seconds
 			setTimeout(() => (isSaved = false), 3000);
 		}
 	}
 
-	// Function to add a new setting
 	function addSetting() {
-		if (newSettingName.trim() === '' || newSettingValue.trim() === '') {
+		if (!newSettingName.trim() || !newSettingValue.trim()) {
 			alert('Please enter both a setting name and value.');
 			return;
 		}
 
-		// Check if the setting already exists (default or custom)
 		if (defaultSettings[newSettingName] || customSettings[newSettingName]) {
 			alert('A setting with this name already exists.');
 			return;
 		}
 
-		// Add the new setting to custom settings
 		customSettings = {
 			...customSettings,
 			[newSettingName]: newSettingValue
 		};
 
-		// Clear the input fields
 		newSettingName = '';
 		newSettingValue = '';
 	}
 
-	// Function to update a setting
 	function updateSetting(key, value) {
-		if (defaultSettings[key]) {
-			// Update default setting
+		if (defaultSettings.hasOwnProperty(key)) {
 			defaultSettings[key] = value;
-		} else if (customSettings[key]) {
-			// Update custom setting
-			customSettings = {
-				...customSettings,
-				[key]: value
-			};
+		} else {
+			console.warn(
+				`Key "${key}" not found in customSettings. Consider adding it or checking for typos.`
+			);
+			// Or, if you want to add the key if it doesn't exist:
+			// customSettings[key] = value; // Uncomment to add the key if it's missing
 		}
 	}
 
-	// Function to delete a custom setting
 	function deleteSetting(key) {
-		if (defaultSettings[key]) {
-			alert('Default settings cannot be deleted.');
-			return;
-		}
-
-		// Remove the setting from custom settings
 		const { [key]: _, ...rest } = customSettings;
 		customSettings = rest;
 	}
 
-	// Function to navigate back to the karaoke route
 	function goHome() {
-		goto('/karaoke'); // Navigate to the karaoke route
+		goto('/karaoke');
 	}
 </script>
 
 <main class="h-screen flex flex-col">
-	<!-- Header (10% height) -->
 	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
 		<Header title="Backend Configuration" subtitle="Add/update settings for the app." />
 	</div>
 
-	<!-- Main Content (80% height, scrollable) -->
 	<div class="flex-1 overflow-y-auto p-4">
-		<!-- Configuration form -->
 		<div class="config-form">
-			<!-- Add new setting -->
-			<div class="form-group">
-				<label for="newSettingName">New Setting Name</label>
-				<input
-					type="text"
-					id="newSettingName"
-					bind:value={newSettingName}
-					placeholder="Enter setting name"
-				/>
+			<div class="hidden">
+				<div class="form-group">
+					<label for="newSettingName">New Setting Name</label>
+					<input
+						type="text"
+						id="newSettingName"
+						bind:value={newSettingName}
+						placeholder="Enter setting name"
+					/>
+				</div>
+
+				<div class="form-group">
+					<label for="newSettingValue">New Setting Value</label>
+					<input
+						type="text"
+						id="newSettingValue"
+						bind:value={newSettingValue}
+						placeholder="Enter setting value"
+					/>
+				</div>
+
+				<button on:click={addSetting}>Add Setting</button>
 			</div>
 
-			<div class="form-group">
-				<label for="newSettingValue">New Setting Value</label>
-				<input
-					type="text"
-					id="newSettingValue"
-					bind:value={newSettingValue}
-					placeholder="Enter setting value"
-				/>
-			</div>
-
-			<button on:click={addSetting}>Add Setting</button>
-
-			<!-- Display all settings -->
 			<div class="settings-list">
 				<h2>Current Settings</h2>
 				{#each Object.entries({ ...defaultSettings, ...customSettings }) as [key, value]}
@@ -140,19 +120,18 @@
 						<!-- svelte-ignore a11y_label_has_associated_control -->
 						<label>{key}</label>
 						<div class="input-container">
-							<input type="text" bind:value on:input={(e) => updateSetting(key, e.target.value)} />
-							{#if !defaultSettings[key]}
-								<button on:click={() => deleteSetting(key)} class="delete-button">
+							<input type="text" {value} on:input={(e) => updateSetting(key, e.target.value)} />
+							{#if Object.keys(customSettings).includes(key)}
+								<!-- svelte-ignore a11y_consider_explicit_label -->
+								<!-- <button on:click={() => deleteSetting(key)} class="delete-button">
 									<i class="fas fa-trash"></i>
-									<!-- Font Awesome trash icon -->
-								</button>
+								</button> -->
 							{/if}
 						</div>
 					</div>
 				{/each}
 			</div>
 
-			<!-- Save configuration -->
 			<button on:click={saveConfig}>Save Configuration</button>
 
 			{#if isSaved}
@@ -161,17 +140,9 @@
 		</div>
 	</div>
 
-	<!-- Footer (10% height) -->
 	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
 		<Footer />
 	</div>
-
-	<!-- Home button -->
-	<!-- <div class="home-button-container">
-		<button on:click={goHome} class="home-button">
-			<i class="fas fa-home"></i>
-		</button>
-	</div> -->
 </main>
 
 <style>
@@ -260,24 +231,5 @@
 		margin-top: 1rem;
 		color: green;
 		font-weight: bold;
-	}
-
-	/* Home button styles */
-	.home-button-container {
-		position: absolute;
-		top: 1rem;
-		left: 1rem;
-	}
-
-	.home-button {
-		background-color: #6c757d; /* Gray color for the home button */
-		padding: 0.5rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.home-button:hover {
-		background-color: #5a6268; /* Darker gray on hover */
 	}
 </style>

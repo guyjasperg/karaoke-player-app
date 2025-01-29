@@ -181,6 +181,7 @@
 
 			// Handle customSettings (if provided)
 			const customSettings = url.searchParams.get('customSettingsString');
+			console.log(customSettings);
 
 			if (customSettings && customSettings !== '[object Object]') {
 				try {
@@ -192,6 +193,7 @@
 
 			console.log('Session ID:', sessionId);
 			console.log('Custom settings:', configSettings);
+			console.log(configSettings.fileServer);
 
 			// Add keyboard event listener
 			window.addEventListener('keydown', handleKeyDown);
@@ -282,13 +284,6 @@
 </main>
 
 <style>
-	.search-container {
-		display: flex;
-		justify-content: center;
-		gap: 0.5rem;
-		margin-bottom: 2rem;
-	}
-
 	input {
 		padding: 0.5rem;
 		font-size: 1rem;

@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, createEventDispatcher } from 'svelte';
 
 	// Props
 	export let videoUrl = ''; // Video URL (filepath) passed from parent
@@ -37,6 +37,22 @@
 	const ALMOST_DONE_TIMEOUT = 3000; // 5 seconds
 	let hasAlmostDoneTriggered = false; // Tracks if the "almost done" state has been triggered for the current video
 
+	let previousVideoUrl = null;
+	$: if (videoUrl !== previousVideoUrl) {
+		if (videoUrl) {
+			// Check if videoUrl is truthy
+			console.log('New video URL:', videoUrl);
+			hasAlmostDoneTriggered = false;
+			isAlmostDone = false;
+			// currentTime = 0;
+			// duration = 0;
+			// isPlaying = false;
+			// ... reset other variables
+
+			previousVideoUrl = videoUrl;
+		}
+	}
+
 	// Function to hide song details after a delay
 	const hideSongDetails = () => {
 		showSongDetails = false; // Hide song details
@@ -56,26 +72,6 @@
 			hideControlsAfterDelay();
 		}
 	};
-
-	// Reactive statement to handle videoUrl changes
-	// $: {
-	// 	console.log('Reactive block triggered!'); // Debugging
-	// 	if (videoUrl) {
-	// 		// Reset the song details visibility
-	// 		showSongDetails = true;
-
-	// 		// Reset the "almost done" state
-	// 		resetAlmostDoneState();
-
-	// 		// Clear the previous timeout (if any)
-	// 		if (timeoutId) {
-	// 			clearTimeout(timeoutId);
-	// 		}
-
-	// 		// Set a new timeout to hide song details after 5 seconds
-	// 		timeoutId = setTimeout(hideSongDetails, 5000); // Adjust the delay as needed
-	// 	}
-	// }
 
 	// Cleanup on component unmount
 	onMount(() => {
@@ -125,6 +121,8 @@
 		}
 	};
 
+	const dispatch = createEventDispatcher(); // Create an event dispatcher
+
 	// Update progress bar and current time
 	const updateProgress = () => {
 		const video = document.getElementById('karaoke-video');
@@ -136,18 +134,33 @@
 		if (duration - currentTime <= ALMOST_DONE_THRESHOLD) {
 			if (!hasAlmostDoneTriggered) {
 				// Only trigger this once per video
-
-				// Set a timeout to hide the notification after 3 seconds
-				// clearTimeout(almostDoneTimeoutId); // Clear any existing timeout
-				// almostDoneTimeoutId = setTimeout(() => {
-				// 	isAlmostDone = false;
-				// }, 10000); // Hide after 3 seconds
 				isAlmostDone = true;
 				hasAlmostDoneTriggered = true;
+
+				//notify parent
+				// Dispatch the 'almostdone' event
+				console.log('dispatching almostdone');
+				dispatch('almostdone', {
+					title: title,
+					artist: artist
+					// ... any other data you want to pass
+				});
 			}
 		} else {
 			// Reset the "almost done" state if the video is no longer in the threshold
 			isAlmostDone = false;
+		}
+
+		// Check if the video has finished playing
+		if (currentTime >= duration && duration > 0) {
+			// Check duration to prevent NaN
+			// Dispatch the 'ended' event
+			console.log('dispatching ended');
+			dispatch('ended', {
+				title: title,
+				artist: artist
+				// ... any other data you want to pass
+			});
 		}
 	};
 
@@ -227,7 +240,6 @@
 
 <!-- Video player -->
 {#if videoUrl}
-	{console.log(videoUrl)}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
 		id="video-container"
@@ -246,6 +258,7 @@
 				duration = document.getElementById('karaoke-video').duration;
 			}}
 			on:click={togglePlay}
+			autoplay
 		>
 			<source src={videoUrl} type="video/mp4" />
 			<!-- Add a track element for accessibility -->
