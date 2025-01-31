@@ -5,6 +5,7 @@
 	export let videoUrl = ''; // Video URL (filepath) passed from parent
 	export let artist = ''; // Artist name passed from parent
 	export let title = ''; // Song title passed from parent
+	export let nextSong = ''; //Next song in queue
 
 	// Reactive variables
 	let isPlaying = false;
@@ -14,6 +15,7 @@
 	let currentTime = 0; // Current playback time
 	let duration = 0; // Total duration of the video
 	let progressBarWidth = 0; // Width of the progress bar (0-100%)
+	let progressBar; // Add a variable to store the progress bar element
 	let volume = 1; // Volume level (0 to 1)
 	let isMuted = false; // Mute state
 	let lastVolume = 1; // Store the last volume setting before muting
@@ -24,6 +26,8 @@
 	let showPlayPauseTooltip = false; // Show play/pause tooltip on hover
 	let showSkipForwardTooltip = false; // Show skip forward tooltip on hover
 	let showFullScreenTooltip = false; // Show full-screen tooltip on hover
+	let videoElement; // Store a reference to the video element
+	let isFullScreen = false;
 
 	// Tooltip delay variables
 	let skipBackwardTooltipTimeout;
@@ -36,6 +40,17 @@
 	let almostDoneTimeoutId; // Store the timeout ID for the "almost done" notification
 	const ALMOST_DONE_TIMEOUT = 3000; // 5 seconds
 	let hasAlmostDoneTriggered = false; // Tracks if the "almost done" state has been triggered for the current video
+
+	let message = null;
+	let messageTimeout;
+
+	function showMessage(text, duration = 3000) {
+		message = text;
+		clearTimeout(messageTimeout);
+		messageTimeout = setTimeout(() => {
+			message = null;
+		}, duration);
+	}
 
 	let previousVideoUrl = null;
 	$: if (videoUrl !== previousVideoUrl) {
@@ -78,7 +93,18 @@
 		// Add keyboard event listener
 		window.addEventListener('keydown', handleKeyDown);
 
+		videoElement = document.getElementById('karaoke-video'); // Get the video element
+		// Add an 'error' event listener to the video element
+		if (videoElement) {
+			videoElement.addEventListener('error', handleVideoError);
+		}
+
 		return () => {
+			// Remove the event listener when the component unmounts to prevent memory leaks
+			if (videoElement) {
+				videoElement.removeEventListener('error', handleVideoError);
+			}
+
 			if (timeoutId) {
 				clearTimeout(timeoutId); // Clear the timeout when the component is destroyed
 			}
@@ -86,6 +112,31 @@
 			window.removeEventListener('keydown', handleKeyDown);
 		};
 	});
+
+	function handleVideoError(error) {
+		console.error('Video Error:', error);
+
+		dispatch('videoerror', {
+			message: 'Error loading video.' // Or a more specific message if available
+			// You can include other error details if needed (e.g., error.message, error.code)
+		});
+
+		// Optional: You could also set a fallback video URL or display an error message directly in the component
+		// videoUrl = '/path/to/fallback/video.mp4';
+		// or
+		// showVideoError = true;
+		duration = 0;
+		showMessage('Error loading video.', 5000);
+	}
+
+	function formatTime(seconds) {
+		if (isNaN(seconds) || seconds === undefined) {
+			return '0:00'; // Or any other default you prefer
+		}
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = Math.floor(seconds % 60);
+		return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+	}
 
 	// Toggle play/pause
 	const togglePlay = () => {
@@ -128,41 +179,77 @@
 		const video = document.getElementById('karaoke-video');
 		currentTime = video.currentTime;
 		duration = video.duration;
-		progressBarWidth = (currentTime / duration) * 100;
 
-		// Check if the video is almost done
-		if (duration - currentTime <= ALMOST_DONE_THRESHOLD) {
-			if (!hasAlmostDoneTriggered) {
-				// Only trigger this once per video
-				isAlmostDone = true;
-				hasAlmostDoneTriggered = true;
+		// Check if videoElement and duration are available
+		if (videoElement && videoElement.duration) {
+			progressBarWidth = (currentTime / duration) * 100;
 
-				//notify parent
-				// Dispatch the 'almostdone' event
-				console.log('dispatching almostdone');
-				dispatch('almostdone', {
+			// Check if the video is almost done
+			if (duration - currentTime <= ALMOST_DONE_THRESHOLD) {
+				if (!hasAlmostDoneTriggered) {
+					// Only trigger this once per video
+					isAlmostDone = true;
+					hasAlmostDoneTriggered = true;
+
+					//notify parent
+					// Dispatch the 'almostdone' event
+					console.log('dispatching almostdone');
+					dispatch('almostdone', {
+						title: title,
+						artist: artist
+						// ... any other data you want to pass
+					});
+				}
+			} else {
+				// Reset the "almost done" state if the video is no longer in the threshold
+				isAlmostDone = false;
+			}
+
+			// Check if the video has finished playing
+			if (currentTime >= duration && duration > 0) {
+				// Check duration to prevent NaN
+				// Dispatch the 'ended' event
+				console.log('dispatching ended');
+				dispatch('ended', {
 					title: title,
 					artist: artist
 					// ... any other data you want to pass
 				});
 			}
 		} else {
-			// Reset the "almost done" state if the video is no longer in the threshold
-			isAlmostDone = false;
-		}
-
-		// Check if the video has finished playing
-		if (currentTime >= duration && duration > 0) {
-			// Check duration to prevent NaN
-			// Dispatch the 'ended' event
-			console.log('dispatching ended');
-			dispatch('ended', {
-				title: title,
-				artist: artist
-				// ... any other data you want to pass
-			});
+			currentTime = 0;
 		}
 	};
+
+	let isDragging = false; // Flag to track dragging state
+
+	function seekStart(event) {
+		isDragging = true; // Set flag when mouse is down
+		// seek(event); // Perform initial seek
+	}
+
+	function seeking(event) {
+		if (isDragging) {
+			// Only seek if dragging
+			seek(event);
+		}
+	}
+
+	function seekEnd() {
+		isDragging = false; // Reset flag when mouse is up
+	}
+
+	function seek(event) {
+		if (!videoElement || !duration || !progressBar) return;
+
+		const rect = progressBar.getBoundingClientRect();
+		const clickX = event.clientX - rect.left;
+		const seekTime = (clickX / rect.width) * duration;
+
+		currentTime = seekTime;
+		videoElement.currentTime = seekTime;
+		updateProgress();
+	}
 
 	// Reset the "almost done" state
 	const resetAlmostDoneState = () => {
@@ -173,14 +260,14 @@
 	};
 
 	// Seek to a specific time in the video
-	const seek = (event) => {
-		const video = document.getElementById('karaoke-video');
-		const progressBar = event.currentTarget;
-		const clickPosition = event.offsetX; // X coordinate of the click relative to the progress bar
-		const progressBarWidth = progressBar.offsetWidth; // Total width of the progress bar
-		const seekTime = (clickPosition / progressBarWidth) * duration; // Calculate the seek time
-		video.currentTime = seekTime; // Update the video's current time
-	};
+	// const seek = (event) => {
+	// 	const video = document.getElementById('karaoke-video');
+	// 	const progressBar = event.currentTarget;
+	// 	const clickPosition = event.offsetX; // X coordinate of the click relative to the progress bar
+	// 	const progressBarWidth = progressBar.offsetWidth; // Total width of the progress bar
+	// 	const seekTime = (clickPosition / progressBarWidth) * duration; // Calculate the seek time
+	// 	video.currentTime = seekTime; // Update the video's current time
+	// };
 
 	// Update volume
 	const updateVolume = (event) => {
@@ -231,11 +318,11 @@
 	};
 
 	// Format time (e.g., 65 => "01:05")
-	const formatTime = (time) => {
-		const minutes = Math.floor(time / 60);
-		const seconds = Math.floor(time % 60);
-		return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-	};
+	// const formatTime = (time) => {
+	// 	const minutes = Math.floor(time / 60);
+	// 	const seconds = Math.floor(time % 60);
+	// 	return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+	// };
 </script>
 
 <!-- Video player -->
@@ -243,22 +330,35 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
 		id="video-container"
-		class="h-full w-full relative bg-slate-700"
+		class="h-full w-full relative bg-black"
 		on:mouseenter={() => (showControls = true)}
 		on:mouseleave={() => (showControls = false)}
 		on:mousemove={resetHideTimeout}
 		role="presentation"
 	>
+		{#if message}
+			<div
+				class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 text-white px-4 py-2 rounded-lg z-10"
+			>
+				{message}
+			</div>
+		{/if}
+
 		<video
 			id="karaoke-video"
 			class="w-full h-full object-contain"
 			src={videoUrl}
 			on:timeupdate={updateProgress}
+			on:input={updateProgress}
 			on:loadedmetadata={() => {
 				duration = document.getElementById('karaoke-video').duration;
 			}}
 			on:click={togglePlay}
+			on:mousedown={seekStart}
+			on:mousemove={seeking}
+			on:mouseup={seekEnd}
 			autoplay
+			bind:this={videoElement}
 		>
 			<source src={videoUrl} type="video/mp4" />
 			<!-- Add a track element for accessibility -->
@@ -315,157 +415,42 @@
 			<p>{artist} - {title}</p>
 		</div>
 
-		<!-- Conditional rendering for controls -->
 		{#if showControls}
-			<!-- Progress Bar -->
-			<div class="absolute bottom-20 left-2 right-2 p-2 bg-black/50 rounded">
-				<div
-					class="w-full h-2 bg-gray-600 rounded-full cursor-pointer relative"
-					on:click={seek}
-					on:mousemove={(e) => {
-						showProgressTooltip = true;
-						const progressBar = e.currentTarget;
-						const clickPosition = e.offsetX;
-						const progressBarWidth = progressBar.offsetWidth;
-						progressTooltipPosition = (clickPosition / progressBarWidth) * 100;
-					}}
-					on:mouseleave={() => (showProgressTooltip = false)}
-					role="presentation"
-				>
-					<div class="h-2 bg-blue-500 rounded-full" style={`width: ${progressBarWidth}%`}></div>
-					<!-- Progress Tooltip -->
-					{#if showProgressTooltip}
-						<div
-							class="absolute -top-8 transform -translate-x-1/2 bg-black/75 text-white text-sm px-2 py-1 rounded"
-							style={`left: ${progressTooltipPosition}%`}
-						>
-							{formatTime((progressTooltipPosition / 100) * duration)}
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Volume Control (Absolute Positioning with Higher z-index) -->
-			<div class="absolute bottom-4 left-4 flex items-center gap-2 z-20">
-				<button
-					on:click={toggleMute}
-					class="text-white p-3 rounded-full hover:scale-125 transition duration-200 text-xl"
-				>
-					{isMuted ? '🔇' : '🔊'}
-				</button>
-				<div
-					class="relative"
-					on:mouseenter={() => (showVolumeTooltip = true)}
-					on:mouseleave={() => (showVolumeTooltip = false)}
-					role="presentation"
-				>
-					<input
-						type="range"
-						min="0"
-						max="1"
-						step="0.01"
-						bind:value={volume}
-						on:input={updateVolume}
-						class="w-20 cursor-pointer {isMuted ? 'opacity-50 cursor-not-allowed' : ''}"
-						disabled={isMuted}
-					/>
-					<!-- Volume Tooltip -->
-					{#if showVolumeTooltip}
-						<div
-							class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/75 text-white text-sm px-2 py-1 rounded"
-						>
-							{Math.round(volume * 100)}%
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Playback Controls (Centered) -->
 			<div
-				id="videoControls"
-				class="absolute bottom-0 left-0 right-0 flex items-center justify-center p-4 bg-gradient-to-t from-black/80 to-transparent z-10"
+				class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 flex items-center justify-between transition-opacity duration-300"
 			>
-				<div class="flex items-center space-x-4">
-					<!-- Skip Backward Button -->
-					<div class="relative">
-						<button
-							id="skipBackward"
-							on:click={skipBackward}
-							on:mouseenter={() => {
-								clearTimeout(skipBackwardTooltipTimeout);
-								showSkipBackwardTooltip = true;
-							}}
-							on:mouseleave={() => {
-								skipBackwardTooltipTimeout = setTimeout(
-									() => (showSkipBackwardTooltip = false),
-									200
-								);
-							}}
-							class="text-white p-3 rounded-full hover:scale-125 transition duration-200 text-xl"
-						>
-							&lt; <!-- "<" icon -->
-						</button>
-						<!-- Skip Backward Tooltip -->
-						{#if showSkipBackwardTooltip}
-							<div
-								class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/75 text-white text-sm px-2 py-1 rounded"
-							>
-								Backward (←)
-							</div>
-						{/if}
-					</div>
-
-					<!-- Play/Pause Button -->
-					<div class="relative">
-						<button
-							id="playPauseButton"
-							on:click={togglePlay}
-							on:mouseenter={() => {
-								clearTimeout(playPauseTooltipTimeout);
-								showPlayPauseTooltip = true;
-							}}
-							on:mouseleave={() => {
-								playPauseTooltipTimeout = setTimeout(() => (showPlayPauseTooltip = false), 200);
-							}}
-							class="text-white p-3 rounded-full hover:scale-150 transition duration-200 text-xl"
-						>
+				<div class="flex items-center w-full">
+					<div class="flex items-center space-x-4 w-full">
+						<button on:click={togglePlay} class="text-white text-2xl hover:text-gray-300">
 							{isPlaying ? '⏸' : '▶'}
-							<!-- Play/Pause icon -->
 						</button>
-						<!-- Play/Pause Tooltip -->
-						{#if showPlayPauseTooltip}
-							<div
-								class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/75 text-white text-sm px-2 py-1 rounded"
-							>
-								{isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-							</div>
-						{/if}
-					</div>
 
-					<!-- Skip Forward Button -->
-					<div class="relative">
-						<button
-							id="skipForward"
-							on:click={skipForward}
-							on:mouseenter={() => {
-								clearTimeout(skipForwardTooltipTimeout);
-								showSkipForwardTooltip = true;
-							}}
-							on:mouseleave={() => {
-								skipForwardTooltipTimeout = setTimeout(() => (showSkipForwardTooltip = false), 200);
-							}}
-							class="text-white p-3 rounded-full hover:scale-125 transition duration-200 text-xl"
-						>
-							&gt; <!-- ">" icon -->
-						</button>
-						<!-- Skip Forward Tooltip -->
-						{#if showSkipForwardTooltip}
+						<div class="flex items-center flex-grow relative">
+							<span class="text-white mr-2 text-sm">{formatTime(currentTime)}</span>
+							<input
+								type="range"
+								min="0"
+								max={duration}
+								bind:value={currentTime}
+								on:input={updateProgress}
+								on:mousedown={seekStart}
+								on:mousemove={seeking}
+								on:mouseup={seekEnd}
+								on:click={seek}
+								bind:this={progressBar}
+								class="w-full h-1 bg-gray-500 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+							<span class="text-white ml-2 text-sm">{formatTime(duration)}</span>
 							<div
-								class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/75 text-white text-sm px-2 py-1 rounded"
-							>
-								Forward (→)
-							</div>
-						{/if}
+								class="absolute top-0 left-0 h-full w-full cursor-pointer pointer-events-none"
+								on:click={seek}
+								role="presentation"
+							></div>
+						</div>
+
+						<button on:click={toggleFullScreen} class="text-white text-2xl hover:text-gray-300">
+							⛶
+						</button>
 					</div>
 				</div>
 			</div>

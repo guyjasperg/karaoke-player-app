@@ -83,7 +83,7 @@
 </script>
 
 <main class="h-screen flex flex-col">
-	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
+	<div class=" bg-slate-500 flex items-center justify-center">
 		<Header title="Backend Configuration" subtitle="Add/update settings for the app." />
 	</div>
 

@@ -224,7 +224,8 @@
 
 <main class="h-screen flex flex-col">
 	<!-- Header (10% height) -->
-	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
+	<div class=" bg-slate-500 flex items-center justify-center">
+		<!-- <p class="text-2xl font-bold text-blue-800">Header (10%)</p> -->
 		<Header title="Queue Songs" />
 	</div>
 

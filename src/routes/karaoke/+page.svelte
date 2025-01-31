@@ -1,12 +1,14 @@
 <script>
 	import { onMount } from 'svelte';
+	import { slide } from 'svelte/transition'; // Import the slide transition
 	import VideoPlayer from '../../components/VideoPlayer.svelte'; // Import VideoPlayer
+	import Header from '../../components/Header.svelte';
 	import Footer from '../../components/Footer.svelte';
+	import Marquee from '../../components/Marquee.svelte';
 	import QRCode from '../../components/QRCode.svelte'; // Import the reusable QRCode component
 	import qrcode from 'qrcode'; // Import the QR code library
 	import { configStore } from '../../lib/stores/configStore.js'; // Import the store
 	import { browser } from '$app/environment';
-	import Header from '../../components/Header.svelte';
 
 	// Reactive variables
 	let queue = []; // Store the list of videos from the API
@@ -19,6 +21,28 @@
 	let queryParams = ''; // holds params to pass to queue route
 	let sessionId = ''; // Unique session ID for the user
 	let config; // Holds the configuration object
+	let showNextSong = false;
+	let nextSongTitle = ''; // Store the title of the next song
+	let showSongList = true; // Control visibility of song list overlay
+
+	// $: {
+	// 	if (window) {
+	// 		showSongList = window.innerWidth <= 768; // Adjust breakpoint as needed
+	// 	}
+	// }
+
+	function toggleSongList() {
+		showSongList = !showSongList;
+	}
+
+	function closeSongList() {
+		showSongList = false;
+	}
+
+	const slideOptions = {
+		duration: 5000, // Duration in milliseconds (e.g., 500ms = 0.5 seconds)
+		easing: 'ease-in-out' // Easing function (e.g., 'ease-in-out', 'ease-in', 'ease-out', 'linear')
+	};
 
 	// Subscribe to the config store
 	configStore.subscribe((value) => {
@@ -30,25 +54,33 @@
 		console.log('Video almost done:', event.detail.title);
 		// Perform actions like loading the next video in the queue, etc.
 		// ... your logic to handle the event
+		if (queue.length > 1) {
+			nextSongTitle = queue[1].Title;
+			showNextSong = true;
+		} else {
+			nextSongTitle = '';
+		}
 	}
 
 	function handleEnded(event) {
 		console.log('Video ended:', event.detail.title);
 		// Load the next video, etc.
 		// Remove the current song from the queue
-		playNextVideo();
+		if (queue.length === 1) {
+			//last song
+			removeCurrentSong();
+		} else {
+			playNextVideo();
+		}
+		showNextSong = false;
+	}
 
-		// Load the next video if available
-		//  if (queue.length > 0) {
-		//      currentVideoUrl = queue[0].filePath;
-		//      currentArtist = queue[0].Artist;
-		//      currentTitle = queue[0].Title;
-		//  } else {
-		//      // Handle the case where the queue is empty
-		//      currentVideoUrl = null; // Or some default state
-		//      currentArtist = '';
-		//      currentTitle = '';
-		//  }
+	function handleVideoError(event) {
+		console.error('Video player error in Karaoke route:', event.detail.message);
+		// Handle the error in your karaoke route (e.g., display a message, load a different video, etc.)
+		alert(event.detail.message);
+		// Example: Load a default video
+		// currentVideoUrl = '/path/to/default/video.mp4';
 	}
 
 	// Default file path for testing (pointing to the local Node.js server)
@@ -118,6 +150,12 @@
 			showPopupMessage('Failed to get queued songs.', 'error');
 		} finally {
 			console.log('getQueuedSongs finally');
+			if (queue && queue.length === 1) {
+				if (queue[0].message) {
+					//probably an error message
+					queue = [];
+				}
+			}
 			isLoading = false; // Set loading to false after fetching
 		}
 	}
@@ -149,6 +187,8 @@
 			videoUrl = '';
 		}
 		removeCurrentSong();
+		nextSongTitle = queue[0].Title;
+		showNextSong = true;
 	};
 
 	// Play previous video in the queue
@@ -160,14 +200,29 @@
 	};
 
 	// Optional: Remove the currently played song from the queue
-	function removeCurrentSong() {
+	async function removeCurrentSong() {
+		// Check if the queue is not empty
 		if (queue.length > 0) {
-			// Check if the queue is not empty
 			const removedSong = queue[0]; // Get the song to be removed (but don't remove yet)
 
-			//also remove from server
+			//remove from server
+			const url = new URL(
+				`/api/proxy/api/songqueue/${removedSong.sequenceID}`,
+				window.location.origin
+			);
+			url.searchParams.append('sessionID', sessionId); // Add sessionID as a query parameter
 
-			console.log('Removed song:', removedSong.Title, removedSong.Artist);
+			const response = await fetch(url.toString(), {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || 'Error deleting song');
+			}
+
+			const deletedSong = await response.json();
+			console.log('Song deleted from queue:', deletedSong);
 
 			queue = queue.slice(1); // Create a *new* array excluding the first element
 		}
@@ -195,6 +250,7 @@
 				width: 200,
 				height: 200
 			});
+			showSongList = false;
 			showQrOverlay = true; // Show the overlay
 		} catch (error) {
 			console.error('Failed to generate QR code:', error);
@@ -249,6 +305,12 @@
 		// fetchQueue(); // Fetch queue for the session
 		getQueuedSongs();
 
+		window.addEventListener('resize', () => {
+			if (window.innerWidth > 768) {
+				showSongList = true;
+			}
+		});
+
 		window.addEventListener('keydown', handleKeyDown);
 		return () => {
 			window.removeEventListener('keydown', handleKeyDown);
@@ -258,18 +320,18 @@
 
 <main class="h-screen flex flex-col">
 	<!-- Header (10% height) -->
-	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
+	<div class=" bg-gray-800 flex items-center justify-center">
 		<!-- <p class="text-2xl font-bold text-blue-800">Header (10%)</p> -->
-		<Header />
+		<Header title="Karaoke Player" />
 	</div>
 
 	<!-- Main Content (80% height) -->
-	<div class="h-[80%] flex">
+	<div class="flex-grow flex relative">
 		<!-- Left Column (80% width) -->
-		<div class="w-4/5 bg-slate-700 flex items-center justify-center relative group">
+		<div class="w-full md:w-4/5 bg-slate-950 flex items-center justify-center relative group">
 			{#if isLoading}
 				<p class="text-2xl font-semibold text-green-800">Loading queue...</p>
-			{:else if queue.length === 0}
+			{:else if queue && queue.length === 0}
 				<p class="text-4xl font-semibold text-green-800">No videos in the queue.</p>
 				<!-- <VideoPlayer {videoUrl} artist="Pink Floyd" title="Another Brick In The Wall" /> -->
 			{:else}
@@ -278,90 +340,124 @@
 					videoUrl={queue[currentVideoIndex].filePath}
 					artist={queue[currentVideoIndex].Artist}
 					title={queue[currentVideoIndex].Title}
+					nextSong=""
 					on:almostdone={handleAlmostDone}
 					on:ended={handleEnded}
 				/>
+				{#if showNextSong}
+					<div class="absolute bottom-10 left-0 right-0 bg-transparent p-4 text-white text-4xl">
+						<Marquee text={nextSongTitle} speed={0.15} fadeDuration={3000} />
+					</div>
+				{/if}
 			{/if}
 		</div>
 
-		<!-- Right Column (20% width) -->
-		<div class="w-1/5 bg-slate-600 flex flex-col overflow-hidden">
-			<!-- Top Section -->
-			<div class="h-full p-0 flex flex-col overflow-clip">
-				<p class="text-center font-semibold mt-2 mb-1 text-gray-400">Songs in queue</p>
-				<!-- show queued songs -->
-				{#if queue && queue.length > 0}
-					<div
-						class="h-full p-2 bg-slate-600 flex flex-col overflow-y-auto"
-						bind:this={listContainer}
-					>
-						<ul>
-							{#each queue as song, index}
-								<!-- svelte-ignore a11y_click_events_have_key_events -->
-								<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<div
-									data-song-id={song.sequenceID}
-									data-song-data={JSON.stringify(song)}
-									class="text-black text-sm overflow-hidden whitespace-nowrap text-ellipsis select-text cursor-pointer p-1 rounded {selectedSongId ===
-									song.sequenceID
-										? 'bg-slate-700 text-white'
-										: 'hover:bg-slate-300'}"
-									on:click={() => selectSong(song.sequenceID, song)}
-								>
-									{song.Title} - {song.Artist}
-								</div>
-							{/each}
-						</ul>
-					</div>
+		<!-- svelte-ignore a11y_consider_explicit_label -->
+		<!-- toggle songList on small screen -->
+		<button
+			class="md:hidden absolute top-1/2 right-4 -translate-y-1/2 text-white p-2 rounded-full z-50 opacity-30"
+			on:click={toggleSongList}
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke-width="1.5"
+				stroke="currentColor"
+				class="size-6"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"
+				/>
+			</svg>
+		</button>
 
-					<!-- Playback controls -->
-					<div class="flex flex-col justify-center p-1 gap-1">
-						<button
-							on:click={playNextVideo}
-							class="bg-blue-500 hover:bg-blue-600 text-white rounded w-full"
+		<!-- Right Column -->
+		{#if showSongList}
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="fixed top-0 left-0 w-full h-full bg-black/50 z-40 md:hidden"
+				on:click={toggleSongList}
+			></div>
+			<div
+				class="fixed top-0 right-0 h-full w-3/5 bg-slate-600 flex flex-col z-50 md:static md:w-1/5 transition:slide={slideOptions}"
+			>
+				<div class="flex-grow p-0 flex flex-col overflow-clip">
+					<p class="text-center font-semibold mt-2 mb-1 text-gray-400">Songs in queue</p>
+					{#if queue && queue.length > 0}
+						<div
+							class="p-2 bg-slate-600 flex-grow flex flex-col overflow-y-auto"
+							bind:this={listContainer}
 						>
-							Play Next
-						</button>
-					</div>
-				{/if}
-			</div>
+							<ul>
+								{#each queue as song, index}
+									<!-- svelte-ignore a11y_click_events_have_key_events -->
+									<!-- svelte-ignore a11y_no_static_element_interactions -->
+									<div
+										data-song-id={song.sequenceID}
+										data-song-data={JSON.stringify(song)}
+										class="text-black text-sm overflow-hidden whitespace-nowrap text-ellipsis select-text cursor-pointer p-1 rounded {selectedSongId ===
+										song.sequenceID
+											? 'bg-slate-700 text-white'
+											: 'hover:bg-slate-300'}"
+										on:click={() => selectSong(song.sequenceID, song)}
+									>
+										{song.Title} - {song.Artist}
+									</div>
+								{/each}
+							</ul>
+						</div>
 
-			<!-- Bottom Section -->
-			<div class="h-20 p-2 bg-slate-600 flex items-center justify-center">
-				<button
-					class="bg-none text-white text-4xl rounded-lg hover:bg-blue-400 hover:text-white transition duration-300 flex items-center justify-center"
-					on:click={generateQrCode}
-				>
-					<!-- <i class="fas fa-qrcode"></i> -->
-					<!-- QR code icon -->
-					<!-- Custom QR code SVG icon -->
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke-width="1.5"
-						stroke="currentColor"
-						class="size-10"
+						<div class="flex flex-col justify-center p-1 gap-1">
+							<button
+								on:click={playNextVideo}
+								class="bg-blue-500 hover:bg-blue-600 text-white rounded w-full"
+							>
+								Play Next
+							</button>
+						</div>
+					{/if}
+				</div>
+
+				<!-- QR Code Button -->
+				<div class="h-20 p-2 bg-slate-600 flex items-center justify-center">
+					<button
+						class="bg-none text-white text-4xl rounded-lg hover:bg-blue-400 hover:text-white transition duration-300 flex items-center justify-center"
+						on:click={generateQrCode}
 					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"
-						/>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z"
-						/>
-					</svg>
-				</button>
+						<!-- <i class="fas fa-qrcode"></i> -->
+						<!-- QR code icon -->
+						<!-- Custom QR code SVG icon -->
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="1.5"
+							stroke="currentColor"
+							class="size-10"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"
+							/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z"
+							/>
+						</svg>
+					</button>
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 
 	<!-- Footer (10% height) -->
-	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
+	<div class="bg-gray-800 flex items-center justify-center py-2">
 		<Footer />
 	</div>
 
