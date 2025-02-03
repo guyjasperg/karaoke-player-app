@@ -1,5 +1,5 @@
 <script>
-	import VideoPlayer from '../components/VideoPlayer.svelte';
+	// import VideoPlayer from '../components/VideoPlayer.svelte';
 </script>
 
 <h1>Welcome to SvelteKit</h1>

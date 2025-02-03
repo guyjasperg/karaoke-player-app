@@ -7,6 +7,7 @@
 	import Marquee from '../../components/Marquee.svelte';
 	import QRCode from '../../components/QRCode.svelte'; // Import the reusable QRCode component
 	import qrcode from 'qrcode'; // Import the QR code library
+	// import { get } from 'svelte/store';
 	import { configStore } from '../../lib/stores/configStore.js'; // Import the store
 	import { browser } from '$app/environment';
 
@@ -24,6 +25,7 @@
 	let showNextSong = false;
 	let nextSongTitle = ''; // Store the title of the next song
 	let showSongList = true; // Control visibility of song list overlay
+	let message = '--***--';
 
 	// $: {
 	// 	if (window) {
@@ -46,8 +48,13 @@
 
 	// Subscribe to the config store
 	configStore.subscribe((value) => {
+		// config = value;
+		console.log('Current configuration:', value);
 		config = value;
 	});
+
+	// // Retrieve the current value of the store
+	// config = get(configStore);
 
 	//VidepPlayer events
 	function handleAlmostDone(event) {
@@ -120,7 +127,7 @@
 	// const { sessionId } = req.params;
 	async function getQueuedSongs() {
 		console.log('getQueuedSongs');
-		console.log(config.customSettings);
+
 		try {
 			// Replace with your third-party API call
 			const response = await fetch(
@@ -139,6 +146,8 @@
 				console.log('Queued songs:', queue);
 				currentVideoIndex = 0;
 				videoUrl = queue[currentVideoIndex].filePath; // Use the first video in the queue
+				nextSongTitle = queue[currentVideoIndex].Title;
+				message = videoUrl;
 			} else {
 				console.log('No songs found in the queue.');
 				videoUrl = defaultFilePath;
@@ -147,7 +156,7 @@
 			queue = [];
 			currentVideoIndex = -1;
 			console.error('Failed to get queued songs:', error);
-			showPopupMessage('Failed to get queued songs.', 'error');
+			// showPopupMessage('Failed to get queued songs.', 'error');
 		} finally {
 			console.log('getQueuedSongs finally');
 			if (queue && queue.length === 1) {
@@ -184,10 +193,12 @@
 		if (queue.length > 0) {
 			videoUrl = queue[1].filePath; // Update the video URL
 		} else {
+			//this is the last song in queue
 			videoUrl = '';
 		}
 		removeCurrentSong();
-		nextSongTitle = queue[0].Title;
+		nextSongTitle = videoUrl;
+		message = videoUrl;
 		showNextSong = true;
 	};
 
@@ -301,9 +312,16 @@
 
 	// Initialize session ID and fetch queue when the page loads
 	onMount(() => {
+		console.log('onMount()');
 		sessionId = getSessionId(); // Get or generate session ID
 		// fetchQueue(); // Fetch queue for the session
+
 		getQueuedSongs();
+
+		// Update the store with new configuration
+		configStore.update((config) => {
+			return { ...config, fileServer: 'http://localhost:3000/videos/' };
+		});
 
 		window.addEventListener('resize', () => {
 			if (window.innerWidth > 768) {
@@ -411,6 +429,7 @@
 							</ul>
 						</div>
 
+						<!-- Play Next Song -->
 						<div class="flex flex-col justify-center p-1 gap-1">
 							<button
 								on:click={playNextVideo}
@@ -458,7 +477,7 @@
 
 	<!-- Footer (10% height) -->
 	<div class="bg-gray-800 flex items-center justify-center py-2">
-		<Footer />
+		<Footer {message} />
 	</div>
 
 	<!-- QR code overlay -->

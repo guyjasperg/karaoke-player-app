@@ -177,10 +177,12 @@
 
 			// Extract session ID from the URL (if provided)
 			const urlSessionId = url.searchParams.get('sessionId');
+			console.log('urlSessionId: ', urlSessionId);
 			sessionId = urlSessionId || getSessionId(); // Use the URL session ID or generate a new one
 
 			// Handle customSettings (if provided)
 			const customSettings = url.searchParams.get('customSettingsString');
+			console.log('customSettings: ', customSettings);
 			console.log(customSettings);
 
 			if (customSettings && customSettings !== '[object Object]') {

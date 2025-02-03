@@ -3,22 +3,32 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
+	// import { get } from 'svelte/store';
 	import { configStore } from '../../lib/stores/configStore.js';
 	import Header from '../../components/Header.svelte';
 	import Footer from '../../components/Footer.svelte';
-
-	// Default settings (cannot be deleted)
-	const defaultSettings = {
-		apiBaseUrl: 'https://api.example.com',
-		websocketUrl: 'wss://ws.example.com',
-		fileServer: 'http://localhost:3001/videos/'
-	};
 
 	// Reactive variables
 	let customSettings = {};
 	let newSettingName = '';
 	let newSettingValue = '';
 	let isSaved = false;
+	let config;
+
+	// Subscribe to the config store
+	configStore.subscribe((value) => {
+		console.log('configStore.subscribe()');
+		// config = value;
+		console.log('Current configuration:', value);
+		config = value;
+	});
+
+	// Default settings (cannot be deleted)
+	const defaultSettings = {
+		apiBaseUrl: 'https://api.example.com',
+		websocketUrl: 'wss://ws.example.com',
+		fileServer: 'http://localhost:3000/videos/'
+	};
 
 	onMount(() => {
 		if (browser) {
