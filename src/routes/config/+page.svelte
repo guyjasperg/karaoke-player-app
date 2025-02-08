@@ -19,7 +19,7 @@
 	configStore.subscribe((value) => {
 		console.log('configStore.subscribe()');
 		// config = value;
-		console.log('Current configuration:', value);
+		// console.log('Current configuration:', value);
 		config = value;
 	});
 

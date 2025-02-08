@@ -5,6 +5,8 @@
 	import Footer from '../../components/Footer.svelte';
 	import Popup from '../../components/Popup.svelte';
 	import SessionSongsPopup from '../../components/SessionSongsPopup.svelte';
+	// import { messages, sendMessage } from '../../lib/socket';
+
 	let searchQuery = ''; // Holds the user's search query
 	let searchResults = []; // Holds the search results from the API
 	let isLoading = false; // Tracks whether the search is in progress
@@ -48,10 +50,15 @@
 
 		isLoading = true;
 		try {
+			// Construct the URL with query parameters
+			const url = new URL('/api/proxy/api/songs/search', window.location.origin);
+			url.searchParams.append('query', searchQuery);
+			url.searchParams.append('field', 'ALL');
+			url.searchParams.append('additionalParam1', 'value1'); // Add additional parameters as needed
+			url.searchParams.append('additionalParam2', 'value2');
+
 			// Replace with your third-party API call
-			const response = await fetch(
-				`/api/proxy/api/songs/search?query=${encodeURIComponent(searchQuery)}&field=${encodeURIComponent('ALL')}`
-			);
+			const response = await fetch(url.toString());
 
 			const data = await response.json();
 			searchResults = data; // Assuming the API returns an array of results
@@ -252,7 +259,12 @@
 
 		<!-- Search input and button -->
 		<div class="flex justify-center gap-2 mb-5">
-			<input type="text" bind:value={searchQuery} placeholder="Search for songs..." />
+			<input
+				type="text"
+				bind:value={searchQuery}
+				placeholder="Search for songs..."
+				on:keydown={(e) => e.key === 'Enter' && searchSongs()}
+			/>
 			<button on:click={searchSongs} disabled={isLoading}>
 				{#if isLoading}
 					Searching...

@@ -1,5 +1,6 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { getSocket } from '../../lib/socket'; // Adjust the path to your socket instance
 	import { slide } from 'svelte/transition'; // Import the slide transition
 	import VideoPlayer from '../../components/VideoPlayer.svelte'; // Import VideoPlayer
 	import Header from '../../components/Header.svelte';
@@ -26,12 +27,8 @@
 	let nextSongTitle = ''; // Store the title of the next song
 	let showSongList = true; // Control visibility of song list overlay
 	let message = '--***--';
-
-	// $: {
-	// 	if (window) {
-	// 		showSongList = window.innerWidth <= 768; // Adjust breakpoint as needed
-	// 	}
-	// }
+	let socket;
+	let isSocketConnected = false;
 
 	function toggleSongList() {
 		showSongList = !showSongList;
@@ -49,7 +46,7 @@
 	// Subscribe to the config store
 	configStore.subscribe((value) => {
 		// config = value;
-		console.log('Current configuration:', value);
+		// console.log('Current configuration:', value);
 		config = value;
 	});
 
@@ -98,11 +95,13 @@
 		const cookie = document.cookie.split(';').find((c) => c.trim().startsWith('sessionId='));
 		if (cookie) {
 			console.log(`sessionId from cookie: ${cookie.split('=')[1]}`);
+			configStore.update((config) => ({ ...config, sessionId: cookie.split('=')[1] })); // Persist sessionId to configStore
 			return cookie.split('=')[1];
 		} else {
 			const newSessionId = generateSessionId();
 			console.log(`sessionId [NEW]]: ${newSessionId}`);
 			document.cookie = `sessionId=${newSessionId}; path=/; max-age=86400`; // Expires in 1 day
+			configStore.update((config) => ({ ...config, sessionId: newSessionId })); // Persist sessionId to configStore
 			return newSessionId;
 		}
 	}
@@ -143,7 +142,7 @@
 					queue[i].filePath = `${config.fileServer}${extractFilenameAndParent(queue[i].filePath)}`;
 				}
 
-				console.log('Queued songs:', queue);
+				// console.log('Queued songs:', queue);
 				currentVideoIndex = 0;
 				videoUrl = queue[currentVideoIndex].filePath; // Use the first video in the queue
 				nextSongTitle = queue[currentVideoIndex].Title;
@@ -242,10 +241,10 @@
 	// Function to generate the QR code for the queue route
 	async function generateQrCode() {
 		console.log('generateQrCode');
-		console.log(config);
+		// console.log(config);
 		const customSettingsString = encodeURIComponent(JSON.stringify(config));
 		console.log(`sessionid: ${sessionId}`);
-		console.log(`customSettings: ${customSettingsString}`);
+		// console.log(`customSettings: ${customSettingsString}`);
 		// console.log(customSettingsString);
 		// console.log(config);
 		// Include session ID and config settings in the URL
@@ -261,7 +260,7 @@
 				width: 200,
 				height: 200
 			});
-			showSongList = false;
+			// showSongList = false;
 			showQrOverlay = true; // Show the overlay
 		} catch (error) {
 			console.error('Failed to generate QR code:', error);
@@ -314,8 +313,32 @@
 	onMount(() => {
 		console.log('onMount()');
 		sessionId = getSessionId(); // Get or generate session ID
-		// fetchQueue(); // Fetch queue for the session
 
+		socket = getSocket('http://192.168.1.6:3000');
+
+		isSocketConnected = socket.connected;
+
+		socket.on('connect', () => {
+			console.log('socket connected');
+			isSocketConnected = true;
+		});
+
+		socket.on('disconnect', () => {
+			isSocketConnected = false;
+		});
+
+		socket.on('songQueueUpdated', (data) => {
+			// const msg = JSON.stringify(message);
+			console.log('k-song added to queue: ', data);
+			console.log('k-action: ', data.action);
+			console.log('k-sessionId: ', data.sessionID);
+			console.log('k-song: ', data.song);
+
+			//only add song if it is for the current session
+			messages.update((currentMessages) => [...currentMessages, data]);
+		});
+
+		// fetchQueue(); // Fetch queue for the session
 		getQueuedSongs();
 
 		// Update the store with new configuration
@@ -334,9 +357,16 @@
 			window.removeEventListener('keydown', handleKeyDown);
 		};
 	});
+
+	onDestroy(() => {
+		// Clean up event listeners when the component is destroyed
+		if (socket) {
+			socket.off('exampleEvent');
+		}
+	});
 </script>
 
-<main class="h-screen flex flex-col">
+<main class="flex flex-col h-screen">
 	<!-- Header (10% height) -->
 	<div class=" bg-gray-800 flex items-center justify-center">
 		<!-- <p class="text-2xl font-bold text-blue-800">Header (10%)</p> -->
@@ -344,7 +374,7 @@
 	</div>
 
 	<!-- Main Content (80% height) -->
-	<div class="flex-grow flex relative">
+	<div class="flex flex-grow overflow-hidden relative">
 		<!-- Left Column (80% width) -->
 		<div class="w-full md:w-4/5 bg-slate-950 flex items-center justify-center relative group">
 			{#if isLoading}
@@ -401,89 +431,117 @@
 				on:click={toggleSongList}
 			></div>
 			<div
-				class="fixed top-0 right-0 h-full w-3/5 bg-slate-600 flex flex-col z-50 md:static md:w-1/5 transition:slide={slideOptions}"
+				class="flex flex-col fixed top-0 right-0 h-full w-3/5 bg-slate-600 z-50 md:static md:w-1/5 transition:slide={slideOptions}"
 			>
-				<div class="flex-grow p-0 flex flex-col overflow-clip">
-					<p class="text-center font-semibold mt-2 mb-1 text-gray-400">Songs in queue</p>
-					{#if queue && queue.length > 0}
-						<div
-							class="p-2 bg-slate-600 flex-grow flex flex-col overflow-y-auto"
-							bind:this={listContainer}
+				<div class="flex flex-col p-0 h-full">
+					<!-- Songs in queue header -->
+					<div class="flex flex-row items-center justify-center">
+						<p class="text-center font-semibold mt-2 mb-1 text-gray-400">Songs in queue</p>
+						<!-- refresh button -->
+						<button
+							type="button"
+							on:click={getQueuedSongs}
+							class="text-slate-300 hover:font-semibold hover:text-white font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center transform transition-transform duration-200 active:scale-90"
 						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1.5"
+								stroke="currentColor"
+								class="size-6"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+								/>
+							</svg>
+							<span class="sr-only">Icon description</span>
+						</button>
+					</div>
+					<hr class="my-1 border-slate-400" />
+
+					<!-- List of queued songs -->
+					<div class="flex-grow overflow-y-auto p-2 bg-slate-600" bind:this={listContainer}>
+						{#if queue && queue.length > 0}
 							<ul>
 								{#each queue as song, index}
 									<!-- svelte-ignore a11y_click_events_have_key_events -->
 									<!-- svelte-ignore a11y_no_static_element_interactions -->
-									<div
+									<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+									<li
 										data-song-id={song.sequenceID}
 										data-song-data={JSON.stringify(song)}
-										class="text-black text-sm overflow-hidden whitespace-nowrap text-ellipsis select-text cursor-pointer p-1 rounded {selectedSongId ===
+										class="text-slate-900 text-sm font-light overflow-hidden whitespace-nowrap text-ellipsis select-text cursor-pointer p-1 rounded {selectedSongId ===
 										song.sequenceID
-											? 'bg-slate-700 text-white'
-											: 'hover:bg-slate-300'}"
+											? 'bg-slate-600 text-white'
+											: 'hover:bg-slate-500'}"
 										on:click={() => selectSong(song.sequenceID, song)}
 									>
 										{song.Title} - {song.Artist}
-									</div>
+									</li>
 								{/each}
 							</ul>
-						</div>
+						{/if}
+					</div>
 
+					<!-- Play next / QR -->
+					<div class="flex flex-col justify-center p-1 gap-1">
 						<!-- Play Next Song -->
-						<div class="flex flex-col justify-center p-1 gap-1">
+						<button
+							on:click={playNextVideo}
+							class="bg-blue-500 hover:bg-blue-600 text-white rounded w-full"
+						>
+							Play Next
+						</button>
+						<!-- QR Code Button -->
+						<div class="h-20 p-2 bg-slate-600 flex items-center justify-center">
 							<button
-								on:click={playNextVideo}
-								class="bg-blue-500 hover:bg-blue-600 text-white rounded w-full"
+								class="bg-none text-white text-4xl rounded-lg hover:bg-slate-500 hover:text-white transition duration-300 flex items-center justify-center"
+								on:click={generateQrCode}
 							>
-								Play Next
+								<!-- <i class="fas fa-qrcode"></i> -->
+								<!-- QR code icon -->
+								<!-- Custom QR code SVG icon -->
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="1.5"
+									stroke="currentColor"
+									class="size-10"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"
+									/>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z"
+									/>
+								</svg>
 							</button>
 						</div>
-					{/if}
-				</div>
-
-				<!-- QR Code Button -->
-				<div class="h-20 p-2 bg-slate-600 flex items-center justify-center">
-					<button
-						class="bg-none text-white text-4xl rounded-lg hover:bg-blue-400 hover:text-white transition duration-300 flex items-center justify-center"
-						on:click={generateQrCode}
-					>
-						<!-- <i class="fas fa-qrcode"></i> -->
-						<!-- QR code icon -->
-						<!-- Custom QR code SVG icon -->
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke-width="1.5"
-							stroke="currentColor"
-							class="size-10"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z"
-							/>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z"
-							/>
-						</svg>
-					</button>
+					</div>
 				</div>
 			</div>
 		{/if}
 	</div>
 
 	<!-- Footer (10% height) -->
-	<div class="bg-gray-800 flex items-center justify-center py-2">
-		<Footer {message} />
+	<div class="flex bg-gray-800 items-center justify-center py-2">
+		<Footer {message} {isSocketConnected} />
 	</div>
 
 	<!-- QR code overlay -->
 	{#if showQrOverlay}
-		<div class="overlay">
-			<div class="overlay-content">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="overlay" on:click={() => (showQrOverlay = false)}>
+			<div class="overlay-content" on:click|stopPropagation>
 				<h2>Scan to Queue Songs</h2>
 				<QRCode {qrCodeUrl} />
 				<p class=" text-sm">{sessionId}</p>

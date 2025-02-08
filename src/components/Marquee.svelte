@@ -43,43 +43,16 @@
 		}
 	}
 
-	.notification {
-		opacity: 1;
-		transition: opacity 0.3s ease;
+	.animate-fade-out {
+		animation: fadeOut 10s ease-in-out forwards; /* Adjust duration here */
 	}
 
-	.notification.animate {
-		animation: scrollAndFade 15s linear forwards; /* Adjust duration as needed */
-	}
-
-	.notification.hidden {
-		opacity: 0;
-		pointer-events: none; /* Disable interactions when hidden */
-	}
-
-	@keyframes scrollRightToLeft {
+	@keyframes fadeOut {
 		0% {
-			transform: translateX(100%);
+			opacity: 1;
 		}
 		100% {
-			transform: translateX(-200%);
-		}
-	}
-
-	@keyframes scrollAndFade {
-		0% {
-			transform: translateX(100%); /* Start off-screen to the right */
-			opacity: 0; /* Start fully transparent */
-		}
-		10% {
-			opacity: 1; /* Fade in quickly */
-		}
-		90% {
-			opacity: 1; /* Stay fully visible while scrolling */
-		}
-		100% {
-			transform: translateX(-250%); /* End off-screen to the left */
-			opacity: 0; /* Fade out at the end */
+			opacity: 0;
 		}
 	}
 </style>
