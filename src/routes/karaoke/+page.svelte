@@ -1,4 +1,7 @@
 <script>
+	import { createLogger } from '$lib/logger';
+	const trace = createLogger('karaoke');
+
 	import { onMount, onDestroy } from 'svelte';
 	import { getSocket } from '../../lib/socket'; // Adjust the path to your socket instance
 	import { slide } from 'svelte/transition'; // Import the slide transition
@@ -26,9 +29,10 @@
 	let showNextSong = false;
 	let nextSongTitle = ''; // Store the title of the next song
 	let showSongList = true; // Control visibility of song list overlay
-	let message = '--***--';
+	let footer_message = '--***--';
 	let socket;
 	let isSocketConnected = false;
+	let videoPlayer;
 
 	function toggleSongList() {
 		showSongList = !showSongList;
@@ -46,8 +50,10 @@
 	// Subscribe to the config store
 	configStore.subscribe((value) => {
 		// config = value;
-		// console.log('Current configuration:', value);
+		// trace('Current configuration:', value);
+		trace('subscribed tp configStore');
 		config = value;
+		trace(config);
 	});
 
 	// // Retrieve the current value of the store
@@ -55,7 +61,7 @@
 
 	//VidepPlayer events
 	function handleAlmostDone(event) {
-		console.log('Video almost done:', event.detail.title);
+		trace('Video almost done:', event.detail.title);
 		// Perform actions like loading the next video in the queue, etc.
 		// ... your logic to handle the event
 		if (queue.length > 1) {
@@ -67,7 +73,7 @@
 	}
 
 	function handleEnded(event) {
-		console.log('Video ended:', event.detail.title);
+		trace('Video ended:', event.detail.title);
 		// Load the next video, etc.
 		// Remove the current song from the queue
 		if (queue.length === 1) {
@@ -94,12 +100,12 @@
 	function getSessionId() {
 		const cookie = document.cookie.split(';').find((c) => c.trim().startsWith('sessionId='));
 		if (cookie) {
-			console.log(`sessionId from cookie: ${cookie.split('=')[1]}`);
+			trace(`sessionId from cookie: ${cookie.split('=')[1]}`);
 			configStore.update((config) => ({ ...config, sessionId: cookie.split('=')[1] })); // Persist sessionId to configStore
 			return cookie.split('=')[1];
 		} else {
 			const newSessionId = generateSessionId();
-			console.log(`sessionId [NEW]]: ${newSessionId}`);
+			trace(`sessionId [NEW]]: ${newSessionId}`);
 			document.cookie = `sessionId=${newSessionId}; path=/; max-age=86400`; // Expires in 1 day
 			configStore.update((config) => ({ ...config, sessionId: newSessionId })); // Persist sessionId to configStore
 			return newSessionId;
@@ -125,7 +131,7 @@
 	// app.get('/api/songqueue/session/:sessionId', (req, res) => {
 	// const { sessionId } = req.params;
 	async function getQueuedSongs() {
-		console.log('getQueuedSongs');
+		trace('getQueuedSongs');
 
 		try {
 			// Replace with your third-party API call
@@ -134,30 +140,33 @@
 			);
 
 			queue = await response.json();
+			// trace(queue);
 
 			if (queue && queue.length > 0) {
 				//need to modify filePath
 				// Loop through the queue and modify filepaths (if needed)
 				for (let i = 0; i < queue.length; i++) {
-					queue[i].filePath = `${config.fileServer}${extractFilenameAndParent(queue[i].filePath)}`;
+					// queue[i].filePath = `${config.fileServer}${extractFilenameAndParent(queue[i].filePath)}`;
+					queue[i].filePath =
+						`http://192.168.1.6:3000/Videos/${extractFilenameAndParent(queue[i].filePath)}`;
 				}
 
-				// console.log('Queued songs:', queue);
+				// trace('Queued songs:', queue);
 				currentVideoIndex = 0;
 				videoUrl = queue[currentVideoIndex].filePath; // Use the first video in the queue
 				nextSongTitle = queue[currentVideoIndex].Title;
-				message = videoUrl;
+				footer_message = videoUrl;
 			} else {
-				console.log('No songs found in the queue.');
+				trace('No songs found in the queue.');
 				videoUrl = defaultFilePath;
 			}
 		} catch (error) {
 			queue = [];
 			currentVideoIndex = -1;
-			console.error('Failed to get queued songs:', error);
+			trace('Failed to get queued songs:', error);
 			// showPopupMessage('Failed to get queued songs.', 'error');
 		} finally {
-			console.log('getQueuedSongs finally');
+			trace('getQueuedSongs finally');
 			if (queue && queue.length === 1) {
 				if (queue[0].message) {
 					//probably an error message
@@ -166,6 +175,14 @@
 			}
 			isLoading = false; // Set loading to false after fetching
 		}
+	}
+
+	function addToQueue(song) {
+		// update filepath
+		song.filePath = `${config.fileServer}${extractFilenameAndParent(song.filePath)}`;
+		trace('addToQueue', song);
+		queue = [...queue, song];
+		trace('Added song to queue:', song);
 	}
 
 	function extractFilenameAndParent(filepath) {
@@ -188,8 +205,9 @@
 
 	// Play next video in the queue
 	const playNextVideo = () => {
-		console.log('playNextVideo', queue.length);
-		if (queue.length > 0) {
+		trace('playNextVideo', queue.length);
+		if (queue.length > 1) {
+			videoPlayer.stop();
 			videoUrl = queue[1].filePath; // Update the video URL
 		} else {
 			//this is the last song in queue
@@ -197,7 +215,7 @@
 		}
 		removeCurrentSong();
 		nextSongTitle = videoUrl;
-		message = videoUrl;
+		footer_message = videoUrl;
 		showNextSong = true;
 	};
 
@@ -232,7 +250,7 @@
 			}
 
 			const deletedSong = await response.json();
-			console.log('Song deleted from queue:', deletedSong);
+			trace('Song deleted from queue:', deletedSong);
 
 			queue = queue.slice(1); // Create a *new* array excluding the first element
 		}
@@ -240,13 +258,13 @@
 
 	// Function to generate the QR code for the queue route
 	async function generateQrCode() {
-		console.log('generateQrCode');
-		// console.log(config);
+		trace('generateQrCode');
+		// trace(config);
 		const customSettingsString = encodeURIComponent(JSON.stringify(config));
-		console.log(`sessionid: ${sessionId}`);
-		// console.log(`customSettings: ${customSettingsString}`);
-		// console.log(customSettingsString);
-		// console.log(config);
+		trace(`sessionid: ${sessionId}`);
+		// trace(`customSettings: ${customSettingsString}`);
+		// trace(customSettingsString);
+		// trace(config);
 		// Include session ID and config settings in the URL
 		queryParams = new URLSearchParams({
 			sessionId,
@@ -278,7 +296,7 @@
 	function selectSong(id, song) {
 		selectedSongId = id;
 		scrollSelectedIntoView();
-		console.log('Selected Song:', song.Artist, song.Title, song.filePath); // Log the full song object
+		trace('Selected Song:', song.Artist, song.Title, song.filePath); // Log the full song object
 	}
 
 	// Function to scroll the selected item into view
@@ -311,7 +329,7 @@
 
 	// Initialize session ID and fetch queue when the page loads
 	onMount(() => {
-		console.log('onMount()');
+		trace('onMount()');
 		sessionId = getSessionId(); // Get or generate session ID
 
 		socket = getSocket('http://192.168.1.6:3000');
@@ -319,7 +337,7 @@
 		isSocketConnected = socket.connected;
 
 		socket.on('connect', () => {
-			console.log('socket connected');
+			trace('socket connected');
 			isSocketConnected = true;
 		});
 
@@ -329,13 +347,17 @@
 
 		socket.on('songQueueUpdated', (data) => {
 			// const msg = JSON.stringify(message);
-			console.log('k-song added to queue: ', data);
-			console.log('k-action: ', data.action);
-			console.log('k-sessionId: ', data.sessionID);
-			console.log('k-song: ', data.song);
+			if (data.action == 'add') {
+				trace('song added to queue: ', data);
+				if (data.sessionID == config.sessionId) {
+					addToQueue(data.song);
+				} else {
+					trace('Not for this session.');
+				}
+			}
 
 			//only add song if it is for the current session
-			messages.update((currentMessages) => [...currentMessages, data]);
+			// messages.update((currentMessages) => [...currentMessages, data.song]);
 		});
 
 		// fetchQueue(); // Fetch queue for the session
@@ -383,8 +405,9 @@
 				<p class="text-4xl font-semibold text-green-800">No videos in the queue.</p>
 				<!-- <VideoPlayer {videoUrl} artist="Pink Floyd" title="Another Brick In The Wall" /> -->
 			{:else}
-				{console.log('Initializing VideoPlayer...')}
+				{trace('Initializing VideoPlayer...')}
 				<VideoPlayer
+					bind:this={videoPlayer}
 					videoUrl={queue[currentVideoIndex].filePath}
 					artist={queue[currentVideoIndex].Artist}
 					title={queue[currentVideoIndex].Title}
@@ -533,7 +556,7 @@
 
 	<!-- Footer (10% height) -->
 	<div class="flex bg-gray-800 items-center justify-center py-2">
-		<Footer {message} {isSocketConnected} />
+		<Footer message={footer_message} {isSocketConnected} />
 	</div>
 
 	<!-- QR code overlay -->

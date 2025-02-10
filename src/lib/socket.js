@@ -49,13 +49,10 @@ export function getSocket(url) {
 		socket.on('songQueueUpdated', (data) => {
 			// const msg = JSON.stringify(message);
 
-			console.log('song added to queue: ', data);
-			console.log('action: ', data.action);
-			console.log('sessionId: ', data.sessionID);
-			console.log('song: ', data.song);
+			console.log('songQueueUpdated()', data.action, data.sessionID);
 
 			//only add song if it is for the current session
-			messages.update((currentMessages) => [...currentMessages, data]);
+			// messages.update((currentMessages) => [...currentMessages, data]);
 		});
 
 		socket.on('reconnect', (attemptNumber) => {

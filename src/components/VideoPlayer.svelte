@@ -1,5 +1,8 @@
 <script>
-	import { onMount, createEventDispatcher } from 'svelte';
+	import { createLogger } from '$lib/logger';
+	const trace = createLogger('VideoPlayer');
+
+	import { onMount, onDestroy, createEventDispatcher } from 'svelte';
 
 	// Props
 	export let videoUrl = ''; // Video URL (filepath) passed from parent
@@ -56,7 +59,7 @@
 	$: if (videoUrl !== previousVideoUrl) {
 		if (videoUrl) {
 			// Check if videoUrl is truthy
-			console.log('New video URL:', videoUrl);
+			trace('New video URL:', videoUrl);
 			hasAlmostDoneTriggered = false;
 			isAlmostDone = false;
 			// currentTime = 0;
@@ -113,8 +116,12 @@
 		};
 	});
 
+	onDestroy(() => {
+		videoElement = null;
+	});
+
 	function handleVideoError(error) {
-		console.error('Video Error:', error);
+		trace('Video Error:', error);
 
 		dispatch('videoerror', {
 			message: 'Error loading video.' // Or a more specific message if available
@@ -140,25 +147,25 @@
 
 	// Toggle play/pause
 	const togglePlay = () => {
-		const video = document.getElementById('karaoke-video');
+		// const video = document.getElementById('karaoke-video');
 		if (isPlaying) {
-			video.pause();
+			videoElement.pause();
 		} else {
-			video.play();
+			videoElement.play();
 		}
 		isPlaying = !isPlaying;
 	};
 
 	// Skip backward
 	const skipBackward = () => {
-		const video = document.getElementById('karaoke-video');
-		video.currentTime -= 10; // Skip back 10 seconds
+		// const video = document.getElementById('karaoke-video');
+		videoElement.currentTime -= 10; // Skip back 10 seconds
 	};
 
 	// Skip forward
 	const skipForward = () => {
-		const video = document.getElementById('karaoke-video');
-		video.currentTime += 10; // Skip forward 10 seconds
+		// const video = document.getElementById('karaoke-video');
+		videoElement.currentTime += 10; // Skip forward 10 seconds
 	};
 
 	// Toggle full-screen mode
@@ -176,9 +183,9 @@
 
 	// Update progress bar and current time
 	const updateProgress = () => {
-		const video = document.getElementById('karaoke-video');
-		currentTime = video.currentTime;
-		duration = video.duration;
+		// const video = document.getElementById('karaoke-video');
+		currentTime = videoElement.currentTime;
+		duration = videoElement.duration;
 
 		// Check if videoElement and duration are available
 		if (videoElement && videoElement.duration) {
@@ -193,7 +200,7 @@
 
 					//notify parent
 					// Dispatch the 'almostdone' event
-					console.log('dispatching almostdone');
+					trace('dispatching almostdone');
 					dispatch('almostdone', {
 						title: title,
 						artist: artist
@@ -209,7 +216,7 @@
 			if (currentTime >= duration && duration > 0) {
 				// Check duration to prevent NaN
 				// Dispatch the 'ended' event
-				console.log('dispatching ended');
+				trace('dispatching ended');
 				dispatch('ended', {
 					title: title,
 					artist: artist
@@ -271,27 +278,35 @@
 
 	// Update volume
 	const updateVolume = (event) => {
-		const video = document.getElementById('karaoke-video');
+		// const video = document.getElementById('karaoke-video');
 		volume = event.target.value; // Get the new volume value from the slider
-		video.volume = volume; // Update the video's volume
+		videoElement.volume = volume; // Update the video's volume
 		isMuted = false; // Unmute if volume is adjusted
 	};
 
 	// Toggle mute/unmute
 	const toggleMute = () => {
-		const video = document.getElementById('karaoke-video');
+		// const video = document.getElementById('karaoke-video');
 		if (isMuted) {
 			// Unmute and restore the last volume setting
-			video.muted = false;
+			videoElement.muted = false;
 			volume = lastVolume;
-			video.volume = lastVolume;
+			videoElement.volume = lastVolume;
 		} else {
 			// Mute and store the current volume setting
 			lastVolume = volume;
-			video.muted = true;
+			videoElement.muted = true;
 		}
 		isMuted = !isMuted;
 	};
+
+	// Function to stop the video
+	export function stop() {
+		if (videoElement) {
+			videoElement.pause();
+			videoElement.currentTime = 0;
+		}
+	}
 
 	// Handle keyboard shortcuts
 	const handleKeyDown = (event) => {

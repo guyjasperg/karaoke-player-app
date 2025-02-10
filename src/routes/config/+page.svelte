@@ -7,6 +7,8 @@
 	import { configStore } from '../../lib/stores/configStore.js';
 	import Header from '../../components/Header.svelte';
 	import Footer from '../../components/Footer.svelte';
+	import { createLogger } from '$lib/logger';
+	const trace = createLogger('config');
 
 	// Reactive variables
 	let customSettings = {};
@@ -90,6 +92,12 @@
 	function goHome() {
 		goto('/karaoke');
 	}
+
+	function resetLocalStorage() {
+		localStorage.clear();
+		alert('Local storage has been reset.');
+		trace('Local storage has been reset.');
+	}
 </script>
 
 <main class="h-screen flex flex-col">
@@ -143,6 +151,7 @@
 			</div>
 
 			<button on:click={saveConfig}>Save Configuration</button>
+			<button on:click={resetLocalStorage}>Reset Local Storage</button>
 
 			{#if isSaved}
 				<p class="success-message">Configuration saved successfully!</p>

@@ -1,4 +1,7 @@
 <script>
+	import { createLogger } from '$lib/logger';
+	const trace = createLogger('queue');
+
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import Header from '../../components/Header.svelte';
@@ -78,7 +81,7 @@
 	// app.get('/api/songqueue/session/:sessionId', (req, res) => {
 	// const { sessionId } = req.params;
 	async function getQueuedSongs() {
-		console.log('getQueuedSongs');
+		trace('getQueuedSongs');
 		try {
 			// Replace with your third-party API call
 			const response = await fetch(
@@ -93,7 +96,7 @@
 				showPopupMessage('No songs found in the queue.', 'info');
 			}
 		} catch (error) {
-			console.error('Failed to get queued songs:', error);
+			trace('Failed to get queued songs:', error);
 			showPopupMessage('Failed to get queued songs.', 'error');
 		} finally {
 			// showSessionSongsPopup = true;
@@ -180,17 +183,17 @@
 	onMount(() => {
 		if (browser) {
 			const url = new URL(window.location.href);
-			console.log(`url: ${url}`);
+			trace(`url: ${url}`);
 
 			// Extract session ID from the URL (if provided)
 			const urlSessionId = url.searchParams.get('sessionId');
-			console.log('urlSessionId: ', urlSessionId);
+			trace('urlSessionId: ', urlSessionId);
 			sessionId = urlSessionId || getSessionId(); // Use the URL session ID or generate a new one
 
 			// Handle customSettings (if provided)
 			const customSettings = url.searchParams.get('customSettingsString');
-			console.log('customSettings: ', customSettings);
-			console.log(customSettings);
+			trace('customSettings: ', customSettings);
+			trace(customSettings);
 
 			if (customSettings && customSettings !== '[object Object]') {
 				try {
@@ -200,9 +203,9 @@
 				}
 			}
 
-			console.log('Session ID:', sessionId);
-			console.log('Custom settings:', configSettings);
-			console.log(configSettings.fileServer);
+			trace('Session ID:', sessionId);
+			trace('Custom settings:', configSettings);
+			trace(configSettings.fileServer);
 
 			// Add keyboard event listener
 			window.addEventListener('keydown', handleKeyDown);
@@ -225,7 +228,7 @@
 
 	const handleSessionIDClick = (event) => {
 		event.preventDefault(); // Prevent the default navigation behavior
-		// console.log('Link clicked!');
+		// trace('Link clicked!');
 		// Call your custom function here
 		getQueuedSongs();
 	};
