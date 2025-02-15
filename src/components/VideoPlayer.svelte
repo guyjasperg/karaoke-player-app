@@ -373,6 +373,7 @@
 			on:mousemove={seeking}
 			on:mouseup={seekEnd}
 			autoplay
+			controls
 			bind:this={videoElement}
 		>
 			<source src={videoUrl} type="video/mp4" />

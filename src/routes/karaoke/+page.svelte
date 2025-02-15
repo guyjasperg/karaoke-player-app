@@ -14,6 +14,7 @@
 	// import { get } from 'svelte/store';
 	import { configStore } from '../../lib/stores/configStore.js'; // Import the store
 	import { browser } from '$app/environment';
+	import { getIPAddress } from '$lib/app';
 
 	// Reactive variables
 	let queue = []; // Store the list of videos from the API
@@ -148,7 +149,7 @@
 				for (let i = 0; i < queue.length; i++) {
 					// queue[i].filePath = `${config.fileServer}${extractFilenameAndParent(queue[i].filePath)}`;
 					queue[i].filePath =
-						`http://192.168.1.6:3000/Videos/${extractFilenameAndParent(queue[i].filePath)}`;
+						`http://192.168.206.4:3000/Videos/${extractFilenameAndParent(queue[i].filePath)}`;
 				}
 
 				// trace('Queued songs:', queue);
@@ -275,8 +276,8 @@
 
 		try {
 			qrCodeUrl = await qrcode.toDataURL(queueUrl, {
-				width: 200,
-				height: 200
+				width: 350,
+				height: 350
 			});
 			// showSongList = false;
 			showQrOverlay = true; // Show the overlay
@@ -330,9 +331,13 @@
 	// Initialize session ID and fetch queue when the page loads
 	onMount(() => {
 		trace('onMount()');
+
+		const ipAddress = getIPAddress();
+		trace('Local IP Address:', ipAddress);
+
 		sessionId = getSessionId(); // Get or generate session ID
 
-		socket = getSocket('http://192.168.1.6:3000');
+		// socket = getSocket('http://192.168.1.6:3000');
 
 		isSocketConnected = socket.connected;
 
@@ -567,10 +572,10 @@
 			<div class="overlay-content" on:click|stopPropagation>
 				<h2>Scan to Queue Songs</h2>
 				<QRCode {qrCodeUrl} />
-				<p class=" text-sm">{sessionId}</p>
+				<p class="text-md font-bold">{sessionId}</p>
 				<!-- Clickable link below the QR code -->
 				<p class="link-text">
-					Or <a href={`/queue?${queryParams}`} class="link">click here</a> to queue songs.
+					Or <a href={`/queue?${queryParams}`} class="link">click here</a>.
 				</p>
 				<button on:click={() => (showQrOverlay = false)}>Close</button>
 			</div>
