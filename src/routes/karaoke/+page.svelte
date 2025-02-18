@@ -52,7 +52,7 @@
 	configStore.subscribe((value) => {
 		// config = value;
 		// trace('Current configuration:', value);
-		trace('subscribed tp configStore');
+		trace('subscribed to configStore');
 		config = value;
 		trace(config);
 	});
@@ -66,7 +66,7 @@
 		// Perform actions like loading the next video in the queue, etc.
 		// ... your logic to handle the event
 		if (queue.length > 1) {
-			nextSongTitle = queue[1].Title;
+			nextSongTitle = `${queue[1].Artist} - ${queue[1].Title}`;
 			showNextSong = true;
 		} else {
 			nextSongTitle = '';
@@ -148,15 +148,14 @@
 				// Loop through the queue and modify filepaths (if needed)
 				for (let i = 0; i < queue.length; i++) {
 					// queue[i].filePath = `${config.fileServer}${extractFilenameAndParent(queue[i].filePath)}`;
-					queue[i].filePath =
-						`http://192.168.206.4:3000/Videos/${extractFilenameAndParent(queue[i].filePath)}`;
+					queue[i].filePath = `${config.fileServer}/${extractFilenameAndParent(queue[i].filePath)}`;
 				}
 
 				// trace('Queued songs:', queue);
 				currentVideoIndex = 0;
 				videoUrl = queue[currentVideoIndex].filePath; // Use the first video in the queue
-				nextSongTitle = queue[currentVideoIndex].Title;
-				footer_message = videoUrl;
+				nextSongTitle = `${queue[currentVideoIndex + 1].Artist} - ${queue[currentVideoIndex + 1].Title}`;
+				footer_message = `${queue[currentVideoIndex].Artist} - ${queue[currentVideoIndex].Title}`;
 			} else {
 				trace('No songs found in the queue.');
 				videoUrl = defaultFilePath;
@@ -210,12 +209,13 @@
 		if (queue.length > 1) {
 			videoPlayer.stop();
 			videoUrl = queue[1].filePath; // Update the video URL
+			nextSongTitle = `${queue[2].Artist} - ${queue[2].Title}`;
 		} else {
 			//this is the last song in queue
 			videoUrl = '';
+			nextSongTitle = null;
 		}
 		removeCurrentSong();
-		nextSongTitle = videoUrl;
 		footer_message = videoUrl;
 		showNextSong = true;
 	};
@@ -337,9 +337,9 @@
 
 		sessionId = getSessionId(); // Get or generate session ID
 
-		// socket = getSocket('http://192.168.1.6:3000');
+		socket = getSocket('http://192.168.1.2:3000');
 
-		isSocketConnected = socket.connected;
+		// isSocketConnected = socket.connected;
 
 		socket.on('connect', () => {
 			trace('socket connected');
@@ -416,13 +416,13 @@
 					videoUrl={queue[currentVideoIndex].filePath}
 					artist={queue[currentVideoIndex].Artist}
 					title={queue[currentVideoIndex].Title}
-					nextSong=""
+					nextSong={nextSongTitle}
 					on:almostdone={handleAlmostDone}
 					on:ended={handleEnded}
 				/>
 				{#if showNextSong}
 					<div class="absolute bottom-10 left-0 right-0 bg-transparent p-4 text-white text-4xl">
-						<Marquee text={nextSongTitle} speed={0.15} fadeDuration={3000} />
+						<!-- <Marquee text={nextSongTitle} speed={0.15} fadeDuration={3000} /> -->
 					</div>
 				{/if}
 			{/if}
@@ -504,7 +504,7 @@
 										class="text-slate-900 text-sm font-light overflow-hidden whitespace-nowrap text-ellipsis select-text cursor-pointer p-1 rounded {selectedSongId ===
 										song.sequenceID
 											? 'bg-slate-600 text-white'
-											: 'hover:bg-slate-500'}"
+											: 'hover:bg-slate-500'} animate-slide-in-right"
 										on:click={() => selectSong(song.sequenceID, song)}
 									>
 										{song.Title} - {song.Artist}
@@ -561,7 +561,7 @@
 
 	<!-- Footer (10% height) -->
 	<div class="flex bg-gray-800 items-center justify-center py-2">
-		<Footer message={footer_message} {isSocketConnected} />
+		<Footer message={footer_message} {isSocketConnected} {config} />
 	</div>
 
 	<!-- QR code overlay -->
@@ -637,5 +637,63 @@
 
 	.link:hover {
 		text-decoration: underline;
+	}
+
+	/* Animation */
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	.animate-fade-in {
+		animation: fadeIn 1s ease-in-out forwards;
+	}
+
+	@keyframes slideInRight {
+		from {
+			transform: translateX(100%);
+			opacity: 0;
+		}
+		to {
+			transform: translateX(0);
+			opacity: 1;
+		}
+	}
+
+	.animate-slide-in-right {
+		animation: slideInRight 0.75s ease-in-out forwards;
+	}
+
+	@keyframes blink {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0;
+		}
+	}
+
+	.animate-blink {
+		animation: blink 0.5s step-start infinite;
+	}
+
+	@keyframes slideInBottom {
+		from {
+			transform: translateY(200%);
+			opacity: 0;
+		}
+		to {
+			transform: translateY(0);
+			opacity: 1;
+		}
+	}
+
+	.animate-slide-in-bottom {
+		animation: slideInBottom 0.5s ease-in-out forwards;
 	}
 </style>

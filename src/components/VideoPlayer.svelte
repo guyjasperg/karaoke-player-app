@@ -343,14 +343,7 @@
 <!-- Video player -->
 {#if videoUrl}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
-	<div
-		id="video-container"
-		class="h-full w-full relative bg-black"
-		on:mouseenter={() => (showControls = true)}
-		on:mouseleave={() => (showControls = false)}
-		on:mousemove={resetHideTimeout}
-		role="presentation"
-	>
+	<div id="video-container" class="h-full w-full relative bg-black" role="presentation">
 		{#if message}
 			<div
 				class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/75 text-white px-4 py-2 rounded-lg z-10"
@@ -397,13 +390,14 @@
 		</div> -->
 
 		<!-- Almost Done Notification -->
-		<div
-			class="notification absolute bottom-32 left-1/2 transform -translate-x-1/2 bg-black/75 text-white text-sm px-4 py-2 rounded {isAlmostDone
-				? 'animate'
-				: 'hidden'}"
-		>
-			Almost done! Only 1 minute left.
-		</div>
+		{#if isAlmostDone && nextSong != null}
+			<div
+				class="notification absolute bottom-10 left-1/2 transform -translate-x-1/2 text-white text-4xl px-4 py-2 rounded
+				animate"
+			>
+				Playing next: {nextSong}
+			</div>
+		{/if}
 
 		<!-- Full-screen overlay button -->
 		<div class="absolute top-2 right-2">
@@ -431,7 +425,7 @@
 			<p>{artist} - {title}</p>
 		</div>
 
-		{#if showControls}
+		{#if showControls && !videoElement.controls}
 			<div
 				class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 flex items-center justify-between transition-opacity duration-300"
 			>

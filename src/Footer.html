@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Footer</title>
+		<link
+			href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<span> asdasdasd </span>
+		<footer
+			class="w-full h-full bg-gray-800 text-white flex items-end justify-end sm:items-center sm:justify-center"
+		>
+			<div class="flex flex-col items-end px-2 sm:items-center sm:px-0">
+				<p class="text-sm text-slate-500 hidden sm:inline">
+					&copy; {currentYear} My App. All rights reserved.
+				</p>
+				<span class="text-sm text-slate-500 sm:hidden">My App</span>
+				<p class="text-xs text-slate-600">{message}</p>
+
+				<div class="flex items-center justify-center gap-2">
+					<span
+						id="ledStat"
+						class="inline-flex items-center rounded-full p-0.5 shadow-md transition-all duration-300 bg-green-100"
+					>
+						<span
+							class="h-2 w-2 rounded-full shadow-inner transition-all duration-300 bg-green-600"
+						></span>
+					</span>
+
+					<p class="text-xs text-slate-600">Socket</p>
+				</div>
+			</div>
+			<!-- Side Info -->
+			<div
+				id="info"
+				class="absolute left-0 flex flex-col max-w-1/4 overflow-x-scroll px-2 items-start bg-amber-50 select-none"
+			>
+				<p class="text-xs text-slate-600">http://localhost:3000</p>
+				<p class="text-xs text-slate-600">asdas</p>
+				<div class="flex items-center justify-center gap-1.5">
+					<span
+						id="ledStat"
+						class="inline-flex items-center rounded-full p-0.5 shadow-md transition-all duration-300 bg-green-500"
+					>
+						<span
+							class="h-2 w-2 rounded-full shadow-inner transition-all duration-300 bg-green-600"
+						></span>
+					</span>
+					<p class="text-xs text-slate-600">askdjaskdj</p>
+				</div>
+			</div>
+		</footer>
+	</body>
+</html>

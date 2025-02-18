@@ -20,15 +20,22 @@ configStore.subscribe((value) => {
 // Create a writable store to hold messages
 export const messages = writable([]);
 
+const TOKEN = 'karaoke-player-app'; // Replace with your actual token
 export function getSocket(url) {
 	if (!socket) {
+		console.log('getSocket()', url);
 		// Initialize the socket with reconnection options
+
+		// Initialize the Socket.IO connection with extraHeaders
 		socket = io(url, {
 			reconnection: true, // Enable automatic reconnection
 			reconnectionAttempts: Infinity, // Retry indefinitely
 			reconnectionDelay: 1000, // Wait 1 second before retrying
 			reconnectionDelayMax: 5000, // Maximum delay between retries
-			timeout: 10000 // Timeout for connection attempts
+			timeout: 10000, // Timeout for connection attempts
+			auth: {
+				token: TOKEN // Pass the token in the auth object
+			}
 		});
 
 		// Log connection events for debugging
@@ -40,19 +47,14 @@ export function getSocket(url) {
 			console.log('socket.io: Disconnected from server');
 		});
 
-		// // Listen for incoming messages
+		// Listen for incoming messages
 		socket.on('message', (message) => {
 			console.log(`socket.io: message received: ${message}`);
 			messages.update((currentMessages) => [...currentMessages, message]);
 		});
 
 		socket.on('songQueueUpdated', (data) => {
-			// const msg = JSON.stringify(message);
-
 			console.log('songQueueUpdated()', data.action, data.sessionID);
-
-			//only add song if it is for the current session
-			// messages.update((currentMessages) => [...currentMessages, data]);
 		});
 
 		socket.on('reconnect', (attemptNumber) => {

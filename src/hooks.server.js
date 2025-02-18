@@ -1,13 +1,24 @@
+import { configStore } from '$lib/stores/configStore.js';
+import { createLogger } from '$lib/logger';
+const trace = createLogger('hooks.server');
+
+// Access the current configuration from configStore
+let config;
+configStore.subscribe((value) => {
+	trace('configStore.subscribe()');
+	config = value;
+})();
+
 export const handle = async ({ event, resolve }) => {
 	// Log the incoming request
-	console.log('Incoming request:', event.url.toString());
+	trace('Incoming request:', event.url.toString());
 
 	// Check if the request is for the proxy endpoint
 	if (event.url.pathname.startsWith('/api/proxy')) {
 		// Construct the target URL
 		const targetUrl = new URL(
 			event.url.pathname.replace('/api/proxy', ''),
-			'http://192.168.206.4:3000' // The 3rd party API base URL
+			'http://192.168.1.2:3000' // The 3rd party API base URL
 		);
 
 		// Copy query parameters from the original request
