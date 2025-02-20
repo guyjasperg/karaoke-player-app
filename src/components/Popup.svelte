@@ -35,6 +35,9 @@
 		background-color: #3498db;
 	}
 
+	.warning {
+		background-color: #e74c3c;
+	}
 	.success {
 		background-color: #2ecc71;
 	}

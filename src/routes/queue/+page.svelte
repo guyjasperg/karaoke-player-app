@@ -47,7 +47,8 @@
 	// Function to search for songs using a third-party API
 	async function searchSongs() {
 		if (searchQuery.trim() === '') {
-			alert('Please enter a search query.');
+			showPopupMessage('Please enter a search query.', 'warning');
+			// alert('Please enter a search query.');
 			return;
 		}
 
@@ -234,70 +235,74 @@
 	};
 </script>
 
-<main class="h-screen flex flex-col">
-	<!-- Header (10% height) -->
-	<div class=" bg-slate-500 flex items-center justify-center">
-		<!-- <p class="text-2xl font-bold text-blue-800">Header (10%)</p> -->
-		<Header title="Queue Songs" />
-	</div>
-
-	<!-- Popup Component -->
-	<Popup message={popupMessage} type={popupType} bind:visible={showPopup} />
-
-	<!-- Session Songs Popup -->
-	<SessionSongsPopup {sessionId} {songs} bind:visible={showSessionSongsPopup} />
-
-	<!-- Main Content (80% height, scrollable) -->
-	<div class="flex-1 overflow-y-auto p-4 items-center justify-center">
-		<!-- Display session ID with Tailwind styles -->
-		{#if sessionId}
-			<p class="text-md text-gray-400 mb-4 text-center">
-				SessionID: <a href="/" class="text-blue-600 font-bold" on:click={handleSessionIDClick}>
-					{sessionId}
-				</a>
-			</p>
-		{/if}
-
-		<p class="text-lg m-4 text-center">Search for songs to add to the karaoke queue.</p>
-
-		<!-- Search input and button -->
-		<div class="flex justify-center gap-2 mb-5">
-			<input
-				type="text"
-				bind:value={searchQuery}
-				placeholder="Search for songs..."
-				on:keydown={(e) => e.key === 'Enter' && searchSongs()}
-			/>
-			<button on:click={searchSongs} disabled={isLoading}>
-				{#if isLoading}
-					Searching...
-				{:else}
-					Search
-				{/if}
-			</button>
+<main>
+	<div class="flex flex-col h-screen">
+		<!-- Header (10% height) -->
+		<div class=" bg-slate-500 flex items-center justify-center">
+			<!-- <p class="text-2xl font-bold text-blue-800">Header (10%)</p> -->
+			<Header title="Queue Songs" />
 		</div>
 
-		<!-- Search results -->
-		{#if searchResults.length > 0}
-			<h2 class="text-center mb-2 text-slate-600">Search Result [{searchResults.length}]</h2>
-			<div class="results-container" bind:this={resultsContainer}>
-				<ul>
-					{#each searchResults as song, index}
-						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-						<li class:selected={index === selectedIndex} on:click={() => (selectedIndex = index)}>
-							<span>{song.Artist} - {song.Title}</span>
-							<button on:click={() => queueSong(song)}>Queue</button>
-						</li>
-					{/each}
-				</ul>
-			</div>
-		{/if}
-	</div>
+		<!-- Popup Component -->
+		<Popup message={popupMessage} type={popupType} bind:visible={showPopup} />
 
-	<!-- Footer (10% height) -->
-	<div class="h-[10%] bg-blue-200 flex items-center justify-center">
-		<Footer />
+		<!-- Session Songs Popup -->
+		<SessionSongsPopup {sessionId} {songs} bind:visible={showSessionSongsPopup} />
+
+		<!-- Main Content (80% height, scrollable) -->
+		<div class="flex-1 p-4 items-center justify-center">
+			<!-- Display session ID with Tailwind styles -->
+			{#if sessionId}
+				<p class="text-md text-gray-400 mb-4 text-center">
+					SessionID: <a href="/" class="text-blue-600 font-bold" on:click={handleSessionIDClick}>
+						{sessionId}
+					</a>
+				</p>
+			{/if}
+
+			<p class="text-lg m-4 text-center">Search for songs to add to the karaoke queue.</p>
+
+			<!-- Search input and button -->
+			<div class="flex justify-center gap-2 mb-5">
+				<input
+					type="text"
+					bind:value={searchQuery}
+					placeholder="Search for songs..."
+					on:keydown={(e) => e.key === 'Enter' && searchSongs()}
+				/>
+				<button on:click={searchSongs} disabled={isLoading}>
+					{#if isLoading}
+						Searching...
+					{:else}
+						Search
+					{/if}
+				</button>
+			</div>
+
+			<!-- Search results -->
+			{#if searchResults.length > 0}
+				<h2 class="text-center mb-2 text-slate-600">Search Result [{searchResults.length}]</h2>
+				<div
+					class="flex-1 text-left max-w-[600px] max-h-[calc(100vh-20rem)] mx-auto overflow-y-auto border border-gray-300 rounded-md p-2"
+					bind:this={resultsContainer}
+				>
+					<ul class="p-0 m-0 overflow-y-scroll">
+						{#each searchResults as song, index}
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+							<li class:selected={index === selectedIndex} on:click={() => (selectedIndex = index)}>
+								<span>{song.Artist} - {song.Title}</span>
+								<button on:click={() => queueSong(song)}>Queue</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</div>
+		<!-- Footer (10% height) -->
+		<div class="h-[10%] bg-blue-200 items-center justify-center">
+			<Footer />
+		</div>
 	</div>
 </main>
 
@@ -327,23 +332,6 @@
 	button:disabled {
 		background-color: #ccc;
 		cursor: not-allowed;
-	}
-
-	.results-container {
-		text-align: left;
-		max-width: 600px;
-		margin: 0 auto;
-		max-height: 400px; /* Limit height for scrollable container */
-		overflow-y: auto; /* Enable vertical scrolling */
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		padding: 0.5rem;
-	}
-
-	ul {
-		list-style: none;
-		padding: 0;
-		margin: 0;
 	}
 
 	li {

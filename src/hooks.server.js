@@ -1,5 +1,6 @@
 import { configStore } from '$lib/stores/configStore.js';
 import { createLogger } from '$lib/logger';
+
 const trace = createLogger('hooks.server');
 
 // Access the current configuration from configStore
@@ -12,14 +13,20 @@ configStore.subscribe((value) => {
 export const handle = async ({ event, resolve }) => {
 	// Log the incoming request
 	trace('Incoming request:', event.url.toString());
+	// trace('fileServer', config.fileServer);
+
+	// Get the local IP address
+	const clientAddress = event.getClientAddress();
+	trace('Client IP Address:', clientAddress);
 
 	// Check if the request is for the proxy endpoint
 	if (event.url.pathname.startsWith('/api/proxy')) {
 		// Construct the target URL
 		const targetUrl = new URL(
 			event.url.pathname.replace('/api/proxy', ''),
-			'http://192.168.1.2:3000' // The 3rd party API base URL
+			'https://karaokedb-production.up.railway.app' // The 3rd party API base URL
 		);
+		// trace('targetUrl', targetUrl);
 
 		// Copy query parameters from the original request
 		event.url.searchParams.forEach((value, key) => {

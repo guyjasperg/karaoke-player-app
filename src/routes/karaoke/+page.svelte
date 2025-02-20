@@ -15,6 +15,7 @@
 	import { configStore } from '../../lib/stores/configStore.js'; // Import the store
 	import { browser } from '$app/environment';
 	import { getIPAddress } from '$lib/app';
+	import { compressString, decompressString } from '$lib/utilities';
 
 	// Reactive variables
 	let queue = []; // Store the list of videos from the API
@@ -267,12 +268,21 @@
 		// trace(customSettingsString);
 		// trace(config);
 		// Include session ID and config settings in the URL
+		// queryParams = new URLSearchParams({
+		// 	sessionId,
+		// 	customSettingsString // Spread the config object into query parameters
+		// }).toString();
 		queryParams = new URLSearchParams({
-			sessionId,
-			customSettingsString // Spread the config object into query parameters
+			sessionId
 		}).toString();
 
 		queueUrl = `${window.location.origin}/queue?${queryParams}`;
+		// trace('queueUrl:', queueUrl.length, queueUrl);
+		// const shortString = compressString(queueUrl);
+		// trace('shortString:', shortString.length, shortString);
+		// const longString = decompressString(shortString);
+		// trace('longString:', longString.length, longString);
+		// trace('queueUrl == longString?', queueUrl == longString);
 
 		try {
 			qrCodeUrl = await qrcode.toDataURL(queueUrl, {
@@ -332,8 +342,8 @@
 	onMount(() => {
 		trace('onMount()');
 
-		const ipAddress = getIPAddress();
-		trace('Local IP Address:', ipAddress);
+		// const ipAddress = getIPAddress();
+		// trace('Local IP Address:', ipAddress);
 
 		sessionId = getSessionId(); // Get or generate session ID
 

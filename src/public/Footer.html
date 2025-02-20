@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Footer</title>
+		<link
+			href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<div class="flex flex-col h-screen">
+			<div class="bg-slate-800 text-white h-20% flex items-center justify-center h-16">
+				<span class="text-black"> asdasdasd </span>
+			</div>
+			<div class="flex flex-1 h-full">asdsd</div>
+			<div class="h-20%">
+				<footer
+					class="w-full h-full bg-gray-800 text-white flex items-end justify-end sm:items-center sm:justify-center py-2"
+				>
+					<div class="flex flex-col items-end px-2 sm:items-center sm:px-0">
+						<p class="text-sm text-slate-500 hidden sm:inline">
+							&copy; {currentYear} My App. All rights reserved.
+						</p>
+						<span class="text-sm text-slate-500 sm:hidden">My App</span>
+						<p class="text-xs text-slate-600">{message}</p>
+
+						<div class="flex items-center justify-center gap-2">
+							<span
+								id="ledStat"
+								class="inline-flex items-center rounded-full p-0.5 shadow-md transition-all duration-300 bg-green-100"
+							>
+								<span
+									class="h-2 w-2 rounded-full shadow-inner transition-all duration-300 bg-green-600"
+								></span>
+							</span>
+
+							<p class="text-xs text-slate-600">Socket</p>
+						</div>
+					</div>
+					<!-- Side Info -->
+					<div
+						id="info"
+						class="absolute left-0 f;ex flex-col max-w-1/4 overflow-x-scroll px-2 items-start select-none"
+					>
+						<div class="flex gap-1.5 z-1000">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1"
+								stroke="white"
+								class="w-4 h-4"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"
+								/>
+							</svg>
+							<p class="text-xs text-slate-600">http://localhost:3000</p>
+						</div>
+						<p class="text-xs text-slate-600">asdas</p>
+						<div class="flex items-center gap-1.5">
+							<span
+								id="ledStat"
+								class="inline-flex items-center rounded-full p-0.5 shadow-md transition-all duration-300 bg-green-500"
+							>
+								<span
+									class="h-2 w-2 rounded-full shadow-inner transition-all duration-300 bg-green-600"
+								></span>
+							</span>
+							<p class="text-xs text-slate-600">askdjaskdj</p>
+						</div>
+					</div>
+				</footer>
+			</div>
+		</div>
+	</body>
+</html>
