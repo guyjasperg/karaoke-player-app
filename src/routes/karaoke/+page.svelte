@@ -210,7 +210,12 @@
 		if (queue.length > 1) {
 			videoPlayer.stop();
 			videoUrl = queue[1].filePath; // Update the video URL
-			nextSongTitle = `${queue[2].Artist} - ${queue[2].Title}`;
+
+			if (queue.length > 2) {
+				nextSongTitle = `${queue[2].Artist} - ${queue[2].Title}`;
+			} else {
+				nextSongTitle = null;
+			}
 		} else {
 			//this is the last song in queue
 			videoUrl = '';
