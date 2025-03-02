@@ -118,6 +118,7 @@
 				Title: song.Title,
 				filePath: song.path
 			};
+			trace('queueSong:', sessionId, songData.Title);
 			const url = new URL('/api/proxy/api/songqueue', window.location.origin);
 			// url.searchParams.append('sessionId', sessionId);
 			// url.searchParams.append('Artist', song.Artist);
@@ -136,8 +137,10 @@
 			if (response.ok) {
 				// alert(`Queued: ${song.Title}`);
 				showPopupMessage(`Queued: ${song.Title}`, 'success');
+				trace('queueSong', 'success');
 			} else {
 				alert('Failed to queue song. Please try again.');
+				trace('queueSong', 'fail');
 			}
 		} catch (error) {
 			console.error('Failed to queue song:', error);

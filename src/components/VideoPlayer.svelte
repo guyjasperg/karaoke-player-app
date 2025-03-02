@@ -361,7 +361,6 @@
 			on:loadedmetadata={() => {
 				duration = document.getElementById('karaoke-video').duration;
 			}}
-			on:click={togglePlay}
 			on:mousedown={seekStart}
 			on:mousemove={seeking}
 			on:mouseup={seekEnd}
@@ -393,7 +392,7 @@
 		{#if isAlmostDone && nextSong != null}
 			<div
 				class="notification absolute bottom-10 left-1/2 transform -translate-x-1/2 text-white text-4xl px-4 py-2 rounded
-				animate"
+				animate whitespace-nowrap"
 			>
 				Playing next: {nextSong}
 			</div>

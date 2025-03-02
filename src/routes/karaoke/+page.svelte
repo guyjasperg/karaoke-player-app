@@ -155,7 +155,13 @@
 				// trace('Queued songs:', queue);
 				currentVideoIndex = 0;
 				videoUrl = queue[currentVideoIndex].filePath; // Use the first video in the queue
-				nextSongTitle = `${queue[currentVideoIndex + 1].Artist} - ${queue[currentVideoIndex + 1].Title}`;
+				if (queue.length > 1) {
+					nextSongTitle = `${queue[currentVideoIndex + 1].Artist} - ${queue[currentVideoIndex + 1].Title}`;
+					// footer_message = `${queue[currentVideoIndex].Artist} - ${queue[currentVideoIndex].Title}`;
+				} else {
+					nextSongTitle = null;
+					// footer_message = videoUrl;
+				}
 				footer_message = `${queue[currentVideoIndex].Artist} - ${queue[currentVideoIndex].Title}`;
 			} else {
 				trace('No songs found in the queue.');
@@ -208,7 +214,7 @@
 	const playNextVideo = () => {
 		trace('playNextVideo', queue.length);
 		if (queue.length > 1) {
-			videoPlayer.stop();
+			// videoPlayer.stop();
 			videoUrl = queue[1].filePath; // Update the video URL
 
 			if (queue.length > 2) {
@@ -258,8 +264,11 @@
 
 			const deletedSong = await response.json();
 			trace('Song deleted from queue:', deletedSong);
-
-			queue = queue.slice(1); // Create a *new* array excluding the first element
+			if (queue.length > 1) {
+				queue = queue.slice(1); // Create a *new* array excluding the first element
+			} else {
+				queue = [];
+			}
 		}
 	}
 
@@ -352,10 +361,9 @@
 
 		sessionId = getSessionId(); // Get or generate session ID
 
-		socket = getSocket('http://192.168.1.2:3000');
+		socket = getSocket(config.websocketUrl); // Get the WebSocket instance
 
 		// isSocketConnected = socket.connected;
-
 		socket.on('connect', () => {
 			trace('socket connected');
 			isSocketConnected = true;
@@ -366,7 +374,7 @@
 		});
 
 		socket.on('songQueueUpdated', (data) => {
-			// const msg = JSON.stringify(message);
+			trace('songQueueUpdated');
 			if (data.action == 'add') {
 				trace('song added to queue: ', data);
 				if (data.sessionID == config.sessionId) {
@@ -384,9 +392,9 @@
 		getQueuedSongs();
 
 		// Update the store with new configuration
-		configStore.update((config) => {
-			return { ...config, fileServer: 'http://localhost:3000/videos/' };
-		});
+		// configStore.update((config) => {
+		// 	return { ...config, fileServer: 'http://localhost:3000/videos/' };
+		// });
 
 		window.addEventListener('resize', () => {
 			if (window.innerWidth > 768) {
@@ -428,7 +436,7 @@
 				{trace('Initializing VideoPlayer...')}
 				<VideoPlayer
 					bind:this={videoPlayer}
-					videoUrl={queue[currentVideoIndex].filePath}
+					{videoUrl}
 					artist={queue[currentVideoIndex].Artist}
 					title={queue[currentVideoIndex].Title}
 					nextSong={nextSongTitle}
@@ -534,12 +542,12 @@
 						<!-- Play Next Song -->
 						<button
 							on:click={playNextVideo}
-							class="bg-blue-500 hover:bg-blue-600 text-white rounded w-full"
+							class="bg-blue-500 hover:bg-blue-600 text-white rounded w-full py-2"
 						>
 							Play Next
 						</button>
 						<!-- QR Code Button -->
-						<div class="h-20 p-2 bg-slate-600 flex items-center justify-center">
+						<div class="h-20 p-2 bg-slate-600 flex flex-col items-center justify-center">
 							<button
 								class="bg-none text-white text-4xl rounded-lg hover:bg-slate-500 hover:text-white transition duration-300 flex items-center justify-center"
 								on:click={generateQrCode}
@@ -567,6 +575,9 @@
 									/>
 								</svg>
 							</button>
+							<span class="text-white text-xs">
+								{sessionId}
+							</span>
 						</div>
 					</div>
 				</div>

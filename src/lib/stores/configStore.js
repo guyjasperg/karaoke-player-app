@@ -5,24 +5,26 @@ import { browser } from '$app/environment';
 const defaultConfig = {
 	apiBaseUrl: 'http://localhost:3000',
 	websocketUrl: 'http://localhost:3000',
-	fileServer: 'http://192.168.1.6:3000/videos/'
+	fileServer: 'http://192.168.1.2:5173/videos/'
 };
+
+let isConfigLoaded = false;
 
 // Function to safely load configuration from localStorage
 function loadConfig() {
-	if (browser) {
+	if (browser && !isConfigLoaded) {
 		try {
 			const savedConfig = localStorage.getItem('backendConfig');
 			if (savedConfig) {
 				console.log('Loaded configStore from localStorage. ', savedConfig);
-
+				isConfigLoaded = true;
 				return JSON.parse(savedConfig);
 			}
 		} catch (error) {
 			console.error('Failed to load configuration from localStorage:', error);
 		}
 	}
-	// Return the default configuration if localStorage is empty or invalid
+	console.log('Using default configuration.');
 	return defaultConfig;
 }
 
@@ -56,7 +58,7 @@ export const configStore = writable(savedConfig);
 // Automatically save the store's state to localStorage whenever it changes
 if (browser) {
 	configStore.subscribe((currentConfig) => {
-		console.log('Updating configStore...');
+		console.log('Updating configStore...', currentConfig);
 		try {
 			localStorage.setItem('backendConfig', JSON.stringify(currentConfig));
 		} catch (error) {

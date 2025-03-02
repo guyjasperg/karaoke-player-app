@@ -26,25 +26,37 @@
 	});
 
 	// Default settings (cannot be deleted)
-	const defaultSettings = {
-		apiBaseUrl: 'https://api.example.com',
-		websocketUrl: 'wss://ws.example.com',
-		fileServer: 'http://localhost:3000/videos/'
-	};
+	// const defaultSettings = {
+	// 	apiBaseUrl: 'https://api.example.com',
+	// 	websocketUrl: 'wss://ws.example.com',
+	// 	fileServer: 'http://localhost:3000/videos/'
+	// };
 
 	onMount(() => {
+		trace('Config page mounted');
 		if (browser) {
 			const savedConfig = JSON.parse(localStorage.getItem('backendConfig') || '{}');
+			trace('Saved configuration:', savedConfig);
 			// customSettings = savedConfig.customSettings || {};
 		}
 	});
 
 	function saveConfig() {
+		trace('saveConfig()');
 		if (browser) {
-			const config = {
-				...defaultSettings
-				// customSettings
-			};
+			// const config = {
+			// 	...defaultSettings
+			// 	// customSettings
+			// };
+			const inputs = document.querySelectorAll('.settings-list input');
+			inputs.forEach((input) => {
+				const key = input.dataset.key;
+				const value = input.value;
+				trace('Setting:', key, value);
+				config[key] = value;
+			});
+
+			trace('Saving configuration:', config);
 			localStorage.setItem('backendConfig', JSON.stringify(config));
 			configStore.set(config);
 			isSaved = true;
@@ -73,8 +85,9 @@
 	}
 
 	function updateSetting(key, value) {
-		if (defaultSettings.hasOwnProperty(key)) {
-			defaultSettings[key] = value;
+		// trace('Updating setting:', key, value);
+		if (config.hasOwnProperty(key)) {
+			// config[key] = value;
 		} else {
 			console.warn(
 				`Key "${key}" not found in customSettings. Consider adding it or checking for typos.`
@@ -133,18 +146,13 @@
 
 			<div class="settings-list">
 				<h2>Current Settings</h2>
-				{#each Object.entries({ ...defaultSettings, ...customSettings }) as [key, value]}
+				<!-- {#each Object.entries({ ...defaultSettings, ...customSettings }) as [key, value]} -->
+				{#each Object.entries({ ...config }) as [key, value]}
 					<div class="setting-item">
 						<!-- svelte-ignore a11y_label_has_associated_control -->
 						<label>{key}</label>
 						<div class="input-container">
-							<input type="text" {value} on:input={(e) => updateSetting(key, e.target.value)} />
-							{#if Object.keys(customSettings).includes(key)}
-								<!-- svelte-ignore a11y_consider_explicit_label -->
-								<!-- <button on:click={() => deleteSetting(key)} class="delete-button">
-									<i class="fas fa-trash"></i>
-								</button> -->
-							{/if}
+							<input type="text" {value} data-key={key} data-value={value} />
 						</div>
 					</div>
 				{/each}

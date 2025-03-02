@@ -13,7 +13,6 @@ configStore.subscribe((value) => {
 export const handle = async ({ event, resolve }) => {
 	// Log the incoming request
 	trace('Incoming request:', event.url.toString());
-	// trace('fileServer', config.fileServer);
 
 	// Get the local IP address
 	const clientAddress = event.getClientAddress();
@@ -24,9 +23,9 @@ export const handle = async ({ event, resolve }) => {
 		// Construct the target URL
 		const targetUrl = new URL(
 			event.url.pathname.replace('/api/proxy', ''),
-			'https://karaokedb-production.up.railway.app' // The 3rd party API base URL
+			config.apiBaseUrl // The 3rd party API base URL
 		);
-		// trace('targetUrl', targetUrl);
+		trace('targetUrl', targetUrl.href);
 
 		// Copy query parameters from the original request
 		event.url.searchParams.forEach((value, key) => {
