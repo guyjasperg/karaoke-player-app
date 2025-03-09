@@ -1,14 +1,6 @@
-import { configStore } from '$lib/stores/configStore.js';
 import { createLogger } from '$lib/logger';
 
 const trace = createLogger('hooks.server');
-
-// Access the current configuration from configStore
-let config;
-configStore.subscribe((value) => {
-	trace('configStore.subscribe()');
-	config = value;
-})();
 
 export const handle = async ({ event, resolve }) => {
 	// Log the incoming request
@@ -17,22 +9,20 @@ export const handle = async ({ event, resolve }) => {
 	// Get the local IP address
 	const clientAddress = event.getClientAddress();
 	trace('Client IP Address:', clientAddress);
+	trace(event.url.pathname);
 
 	// Check if the request is for the proxy endpoint
-	if (event.url.pathname.startsWith('/api/proxy')) {
-		// Construct the target URL
-		const targetUrl = new URL(
-			event.url.pathname.replace('/api/proxy', ''),
-			config.apiBaseUrl // The 3rd party API base URL
-		);
-		trace('targetUrl', targetUrl.href);
+	if (event.url.pathname.startsWith('/api/proxy/')) {
+		// Extract the target URL from the path by removing '/api/proxy/'
+		const targetUrl = new URL(event.url.pathname.replace('/api/proxy/', ''), event.url.origin);
+		trace('Proxying to:', targetUrl.href);
 
 		// Copy query parameters from the original request
 		event.url.searchParams.forEach((value, key) => {
 			targetUrl.searchParams.append(key, value);
 		});
 
-		// Forward the request to the 3rd party API using fetch
+		// Forward the request to the target API using fetch
 		try {
 			const fetchOptions = {
 				method: event.request.method,
@@ -48,17 +38,18 @@ export const handle = async ({ event, resolve }) => {
 				fetchOptions.duplex = 'half';
 			}
 
+			trace('Sending proxy request with options:', fetchOptions);
 			const response = await fetch(targetUrl.toString(), fetchOptions);
-			console.log(response.status, response.statusText);
+			trace(`Proxy response: ${response.status} ${response.statusText}`);
 
-			// Return the response from the 3rd party API
+			// Return the response from the target API
 			return new Response(response.body, {
 				status: response.status,
 				headers: response.headers
 			});
 		} catch (err) {
-			console.error('Proxy error:', err);
-			return new Response('Proxy error', { status: 500 });
+			trace('Proxy error:', err);
+			return new Response('Proxy error: ' + err.message, { status: 500 });
 		}
 	}
 

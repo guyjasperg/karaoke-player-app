@@ -1,10 +1,10 @@
 <!-- src/routes/config/+page.svelte -->
 <script>
+	import { configStore } from '../../lib/stores/configStore.js';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	// import { get } from 'svelte/store';
-	import { configStore } from '../../lib/stores/configStore.js';
 	import Header from '../../components/Header.svelte';
 	import Footer from '../../components/Footer.svelte';
 	import { createLogger } from '$lib/logger';
@@ -15,50 +15,36 @@
 	let newSettingName = '';
 	let newSettingValue = '';
 	let isSaved = false;
-	let config;
+	let isInitialized = false;
 
-	// Subscribe to the config store
-	configStore.subscribe((value) => {
-		console.log('configStore.subscribe()');
-		// config = value;
-		// console.log('Current configuration:', value);
-		config = value;
-	});
-
-	// Default settings (cannot be deleted)
-	// const defaultSettings = {
-	// 	apiBaseUrl: 'https://api.example.com',
-	// 	websocketUrl: 'wss://ws.example.com',
-	// 	fileServer: 'http://localhost:3000/videos/'
-	// };
+	// Use the store value directly with $ prefix
+	$: config = $configStore;
+	$: if (browser && config) {
+		isInitialized = true;
+	}
 
 	onMount(() => {
 		trace('Config page mounted');
 		if (browser) {
-			const savedConfig = JSON.parse(localStorage.getItem('backendConfig') || '{}');
-			trace('Saved configuration:', savedConfig);
-			// customSettings = savedConfig.customSettings || {};
+			trace('Current configuration:', config);
 		}
 	});
 
 	function saveConfig() {
 		trace('saveConfig()');
 		if (browser) {
-			// const config = {
-			// 	...defaultSettings
-			// 	// customSettings
-			// };
 			const inputs = document.querySelectorAll('.settings-list input');
+			const newConfig = { ...config };
+
 			inputs.forEach((input) => {
 				const key = input.dataset.key;
 				const value = input.value;
 				trace('Setting:', key, value);
-				config[key] = value;
+				newConfig[key] = value;
 			});
 
-			trace('Saving configuration:', config);
-			localStorage.setItem('backendConfig', JSON.stringify(config));
-			configStore.set(config);
+			trace('Saving configuration:', newConfig);
+			configStore.set(newConfig);
 			isSaved = true;
 			setTimeout(() => (isSaved = false), 3000);
 		}
@@ -146,16 +132,18 @@
 
 			<div class="settings-list">
 				<h2>Current Settings</h2>
-				<!-- {#each Object.entries({ ...defaultSettings, ...customSettings }) as [key, value]} -->
-				{#each Object.entries({ ...config }) as [key, value]}
-					<div class="setting-item">
-						<!-- svelte-ignore a11y_label_has_associated_control -->
-						<label>{key}</label>
-						<div class="input-container">
-							<input type="text" {value} data-key={key} data-value={value} />
+				{#if isInitialized}
+					{#each Object.entries(config) as [key, value]}
+						<div class="setting-item">
+							<label>{key}</label>
+							<div class="input-container">
+								<input type="text" {value} data-key={key} data-value={value} />
+							</div>
 						</div>
-					</div>
-				{/each}
+					{/each}
+				{:else}
+					<div class="loading">Loading configuration...</div>
+				{/if}
 			</div>
 
 			<button on:click={saveConfig}>Save Configuration</button>
@@ -258,5 +246,11 @@
 		margin-top: 1rem;
 		color: green;
 		font-weight: bold;
+	}
+
+	.loading {
+		text-align: center;
+		padding: 1rem;
+		color: #666;
 	}
 </style>

@@ -8,6 +8,7 @@
 	import Footer from '../../components/Footer.svelte';
 	import Popup from '../../components/Popup.svelte';
 	import SessionSongsPopup from '../../components/SessionSongsPopup.svelte';
+	import { configStore } from '../../lib/stores/configStore.js'; // Import the store
 	// import { messages, sendMessage } from '../../lib/socket';
 
 	let searchQuery = ''; // Holds the user's search query
@@ -26,6 +27,16 @@
 	let popupMessage = '';
 	let popupType = 'info';
 	let showPopup = false;
+
+	let config;
+	// Subscribe to the config store
+	configStore.subscribe((value) => {
+		// config = value;
+		// trace('Current configuration:', value);
+		trace('subscribed to configStore');
+		config = value;
+		trace(config);
+	});
 
 	// Fetch session ID from cookie or generate a new one
 	function getSessionId() {
@@ -55,7 +66,10 @@
 		isLoading = true;
 		try {
 			// Construct the URL with query parameters
-			const url = new URL('/api/proxy/api/songs/search', window.location.origin);
+			const url = new URL(
+				`/api/proxy/${config.apiBaseUrl}/api/songs/search`,
+				window.location.origin
+			);
 			url.searchParams.append('query', searchQuery);
 			url.searchParams.append('field', 'ALL');
 			url.searchParams.append('additionalParam1', 'value1'); // Add additional parameters as needed
@@ -86,7 +100,7 @@
 		try {
 			// Replace with your third-party API call
 			const response = await fetch(
-				`/api/proxy/api/songqueue/session/${encodeURIComponent(sessionId)}`
+				`/api/proxy/${config.apiBaseUrl}/api/songqueue/session/${encodeURIComponent(sessionId)}`
 			);
 
 			songs = await response.json();
@@ -119,7 +133,7 @@
 				filePath: song.path
 			};
 			trace('queueSong:', sessionId, songData.Title);
-			const url = new URL('/api/proxy/api/songqueue', window.location.origin);
+			const url = new URL(`/api/proxy/${config.apiBaseUrl}/api/songqueue`, window.location.origin);
 			// url.searchParams.append('sessionId', sessionId);
 			// url.searchParams.append('Artist', song.Artist);
 			// url.searchParams.append('Title', song.Title);
@@ -185,10 +199,11 @@
 
 	// Initialize session ID and event listener when the page loads
 	onMount(() => {
+		trace('onMount');
 		if (browser) {
 			const url = new URL(window.location.href);
 			trace(`url: ${url}`);
-
+			trace('config:', config);
 			// Extract session ID from the URL (if provided)
 			const urlSessionId = url.searchParams.get('sessionId');
 			trace('urlSessionId: ', urlSessionId);

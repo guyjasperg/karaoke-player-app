@@ -138,7 +138,7 @@
 		try {
 			// Replace with your third-party API call
 			const response = await fetch(
-				`/api/proxy/api/songqueue/session/${encodeURIComponent(sessionId)}`
+				`/api/proxy/${config.apiBaseUrl}/api/songqueue/session/${encodeURIComponent(sessionId)}`
 			);
 
 			queue = await response.json();
@@ -248,7 +248,7 @@
 
 			//remove from server
 			const url = new URL(
-				`/api/proxy/api/songqueue/${removedSong.sequenceID}`,
+				`/api/proxy/${config.apiBaseUrl}/api/songqueue/${removedSong.sequenceID}`,
 				window.location.origin
 			);
 			url.searchParams.append('sessionID', sessionId); // Add sessionID as a query parameter
@@ -287,7 +287,8 @@
 		// 	customSettingsString // Spread the config object into query parameters
 		// }).toString();
 		queryParams = new URLSearchParams({
-			sessionId
+			sessionId,
+			apiBaseUrl: config.apiBaseUrl
 		}).toString();
 
 		queueUrl = `${window.location.origin}/queue?${queryParams}`;

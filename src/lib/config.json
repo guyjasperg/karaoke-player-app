@@ -1,0 +1,5 @@
+{
+  "apiBaseUrl": "http://localhost:3000",
+  "websocketUrl": "http://localhost:3000",
+  "fileServer": "http://192.168.1.2:5173/videos/"
+}
