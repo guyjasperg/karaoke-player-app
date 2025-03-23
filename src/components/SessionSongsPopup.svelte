@@ -59,12 +59,14 @@
 		<div class="w-full h-px bg-gray-200 my-2" />
 
 		<!-- List of songs -->
-		<ul class="list-none p-0 m-0">
-			{#each songs as song}
-				<li class="p-2 border-b border-gray-200 text-sm text-gray-700 last:border-b-0">
-					{song.Artist} - {song.Title}
-				</li>
-			{/each}
-		</ul>
+		<div class="max-h-96 overflow-y-auto">
+			<ul class="list-none p-0 m-0">
+				{#each songs as song}
+					<li class="p-2 border-b border-gray-200 text-sm text-gray-700 last:border-b-0">
+						{song.Artist} - {song.Title}
+					</li>
+				{/each}
+			</ul>
+		</div>
 	</div>
 {/if}

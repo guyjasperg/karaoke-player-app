@@ -38,7 +38,7 @@ export const handle = async ({ event, resolve }) => {
 				fetchOptions.duplex = 'half';
 			}
 
-			trace('Sending proxy request with options:', fetchOptions);
+			// trace('Sending proxy request with options:', fetchOptions);
 			const response = await fetch(targetUrl.toString(), fetchOptions);
 			trace(`Proxy response: ${response.status} ${response.statusText}`);
 

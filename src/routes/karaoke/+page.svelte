@@ -66,6 +66,7 @@
 		trace('Video almost done:', event.detail.title);
 		// Perform actions like loading the next video in the queue, etc.
 		// ... your logic to handle the event
+		showNextSong = false;
 		if (queue.length > 1) {
 			nextSongTitle = `${queue[1].Artist} - ${queue[1].Title}`;
 			showNextSong = true;
@@ -186,10 +187,11 @@
 
 	function addToQueue(song) {
 		// update filepath
-		song.filePath = `${config.fileServer}${extractFilenameAndParent(song.filePath)}`;
+		song.filePath = `${config.fileServer}/${extractFilenameAndParent(song.filePath)}`;
 		trace('addToQueue', song);
 		queue = [...queue, song];
-		trace('Added song to queue:', song);
+		trace('Added song to queue:');
+		playNextVideo(true);
 	}
 
 	function extractFilenameAndParent(filepath) {
@@ -211,25 +213,39 @@
 	}
 
 	// Play next video in the queue
-	const playNextVideo = () => {
+	const playNextVideo = async (bPlayCurrent = false) => {
 		trace('playNextVideo', queue.length);
+		trace(bPlayCurrent);
+		if (!bPlayCurrent && queue.length > 0) {
+			//remove current song
+			await removeCurrentSong();
+		}
+		trace(queue.length);
+		//check queue length
+		if (queue.length === 0) {
+			//no more songs in queue
+			videoUrl = '';
+			showNextSong = false;
+			nextSongTitle = null;
+			return;
+		}
+		trace(queue[0].Title);
+		trace(queue[0].filePath);
+		// play next song in queue
+		videoUrl = queue[0].filePath;
+		footer_message = `${queue[0].Artist} - ${queue[0].Title}`;
+
+		// check next song after this one
 		if (queue.length > 1) {
 			// videoPlayer.stop();
-			videoUrl = queue[1].filePath; // Update the video URL
-
-			if (queue.length > 2) {
-				nextSongTitle = `${queue[2].Artist} - ${queue[2].Title}`;
-			} else {
-				nextSongTitle = null;
-			}
+			nextSongTitle = `${queue[1].Artist} - ${queue[1].Title}`;
+			showNextSong = true;
 		} else {
 			//this is the last song in queue
-			videoUrl = '';
+			showNextSong = false;
 			nextSongTitle = null;
 		}
-		removeCurrentSong();
-		footer_message = videoUrl;
-		showNextSong = true;
+		// removeCurrentSong();
 	};
 
 	// Play previous video in the queue
@@ -242,6 +258,7 @@
 
 	// Optional: Remove the currently played song from the queue
 	async function removeCurrentSong() {
+		trace('removing current song from queue...');
 		// Check if the queue is not empty
 		if (queue.length > 0) {
 			const removedSong = queue[0]; // Get the song to be removed (but don't remove yet)
@@ -375,7 +392,7 @@
 		});
 
 		socket.on('songQueueUpdated', (data) => {
-			trace('songQueueUpdated');
+			// trace('songQueueUpdated', data.action);
 			if (data.action == 'add') {
 				trace('song added to queue: ', data);
 				if (data.sessionID == config.sessionId) {
@@ -383,6 +400,21 @@
 				} else {
 					trace('Not for this session.');
 				}
+			} else if (data.action == 'remove') {
+				trace('song removed from queue: ', data);
+				if (data.sessionID == config.sessionId) {
+					// removeCurrentSong();
+				} else {
+					trace('Not for this session.');
+				}
+			} else if (data.action == 'clear') {
+				trace('queue cleared: ', data);
+				if (data.sessionID == config.sessionId) {
+				} else {
+					trace('Not for this session.');
+				}
+			} else {
+				trace('songQueueUpdated: unknown action: ', data);
 			}
 
 			//only add song if it is for the current session
@@ -412,7 +444,9 @@
 	onDestroy(() => {
 		// Clean up event listeners when the component is destroyed
 		if (socket) {
-			socket.off('exampleEvent');
+			socket.off('songQueueUpdated');
+			socket.off('connect');
+			socket.off('disconnect');
 		}
 	});
 </script>
@@ -542,7 +576,7 @@
 					<div class="flex flex-col justify-center p-1 gap-1">
 						<!-- Play Next Song -->
 						<button
-							on:click={playNextVideo}
+							on:click={() => playNextVideo(false)}
 							class="bg-blue-500 hover:bg-blue-600 text-white rounded w-full py-2"
 						>
 							Play Next

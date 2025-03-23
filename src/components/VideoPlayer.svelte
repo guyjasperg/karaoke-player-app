@@ -37,6 +37,7 @@
 	let playPauseTooltipTimeout;
 	let skipForwardTooltipTimeout;
 	let fullScreenTooltipTimeout;
+	let current_videoUrl = '';
 
 	let isAlmostDone = false; // Tracks if the video is almost done
 	const ALMOST_DONE_THRESHOLD = 60; // 1 minute in seconds
@@ -90,6 +91,39 @@
 			hideControlsAfterDelay();
 		}
 	};
+
+	// Debounce function
+	function debounce(func, delay) {
+		let timeout;
+		return function (...args) {
+			clearTimeout(timeout);
+			timeout = setTimeout(() => func.apply(this, args), delay);
+		};
+	}
+
+	const handleVideoChange = () => {
+		if (videoUrl !== previousVideoUrl) {
+			trace('New video URL:', videoUrl);
+			// Reset state only if the video URL has changed
+			if (videoUrl) {
+				resetPlayerState();
+				previousVideoUrl = videoUrl;
+			}
+		}
+	};
+
+	const resetPlayerState = () => {
+		currentTime = 0;
+		duration = 0;
+		isPlaying = false;
+		// Reset other necessary states
+	};
+
+	// Use the debounced function for video URL changes
+	const debouncedHandleVideoChange = debounce(handleVideoChange, 300);
+
+	// Watch for changes in videoUrl
+	$: debouncedHandleVideoChange();
 
 	// Cleanup on component unmount
 	onMount(() => {
@@ -342,6 +376,8 @@
 
 <!-- Video player -->
 {#if videoUrl}
+	<!-- svelte-ignore block_empty -->
+	{#await Promise.resolve().then(() => console.log('videoUrl changed'))}{/await}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div id="video-container" class="h-full w-full relative bg-black" role="presentation">
 		{#if message}
@@ -389,7 +425,7 @@
 		</div> -->
 
 		<!-- Almost Done Notification -->
-		{#if isAlmostDone && nextSong != null}
+		{#if isAlmostDone && nextSong != ''}
 			<div
 				class="notification absolute bottom-10 left-1/2 transform -translate-x-1/2 text-white text-4xl px-4 py-2 rounded
 				animate whitespace-nowrap"

@@ -124,6 +124,7 @@
 	// app.post('/api/songqueue', (req, res) => {
 	//     const { sessionId, Artist, Title, filePath, status } = req.body;
 	async function queueSong(song) {
+		trace('queueSong:', sessionId, song);
 		try {
 			// Construct the URL with query parameters
 			const songData = {
@@ -287,6 +288,10 @@
 					bind:value={searchQuery}
 					placeholder="Search for songs..."
 					on:keydown={(e) => e.key === 'Enter' && searchSongs()}
+					on:focus={(e) => {
+						selectedIndex = -1;
+						e.target.select();
+					}}
 				/>
 				<button on:click={searchSongs} disabled={isLoading}>
 					{#if isLoading}
